@@ -3,34 +3,33 @@
 Code that runs on the Raspberry Pi for the Starlite project.
 
 
-## Before running any scripts & installing dependencies
+## Initial Setup
 
-Before running any scripts or installing dependencies on the repository, you need to activate the virtual environment:
+1. Create the virtual environment: `python -m venv venv`
 
-- On Windows: `.\venv\Scripts\activate`
-- On Linux: `venv/bin/activate`
+2. Activate the virtual environment:
+  
+    - On Windows: `.\venv\Scripts\activate`
+    - On Linux: `venv/bin/activate`
 
-To exit the virtual environment:
-`deactivate`
-
-
-## Installing dependencies
-
-To install all dependencies on the virtual environment:
-
-`python -m pip install -r requirements.txt`
-
-
-## Updating dependencies
-
-To update the dependencies of this repository:
-
-`python -m pip freeze > requirements.txt`
+3. Install all dependencies on the virtual environment: `python -m pip install -r requirements.txt`
 
 
 ## Running the scripts
 
-When the virtual environment is active, and the dependencies already installed, the scripts are ready to run.
+Make sure that the virtual environment is active and the dependencies already installed before running any scripts.
+
+
+## Deactivating the virtual environment
+
+To exit the virtual environment when the virtual environment is active: `deactivate`
+
+
+## Updating dependencies
+
+Make sure the virtual environment is active. To update the dependencies of this repository:
+
+`python -m pip freeze > requirements.txt`
 
 
 ## More information
