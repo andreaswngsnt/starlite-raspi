@@ -1,4 +1,15 @@
+Adafruit-Blinka==8.24.0
+adafruit-circuitpython-bno08x==1.2.4
+adafruit-circuitpython-busdevice==5.2.6
+adafruit-circuitpython-requests==2.0.2
+adafruit-circuitpython-typing==1.9.5
+Adafruit-PlatformDetect==3.53.0
+Adafruit-PureIO==1.1.11
 colorzero==2.0
 gpiozero==2.0
 keyboard==0.13.5
+pyftdi==0.55.0
 pygame==2.5.2
+pyserial==3.5
+pyusb==1.2.1
+typing_extensions==4.8.0
