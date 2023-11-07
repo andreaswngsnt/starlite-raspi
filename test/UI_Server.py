@@ -2,7 +2,7 @@ import socket
 import threading
 
 # Server configuration
-HOST = '0.0.0.0'  # Listen on all available network interfaces
+HOST = '192.168.0.185'  # Listen on all available network interfaces
 PORT = 12345      # Port to listen on
 USERS = {'user1': 'password1', 'user2': 'password2'}  # Set the username and password
 
