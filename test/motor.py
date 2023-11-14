@@ -97,26 +97,43 @@ else:
         # Toggle control
         x = input("Enter command:")
         
+        # Move forward
         if x == 'w':
             motorL.forward()
             motorR.forward()
             print("Forward")
 
+        # Move backward
         elif x == 's':
             motorL.backward()
             motorR.backward()
             print("Backward")
 
+        # Rotate left
+        elif x == 'q':
+            motorL.backward(1)
+            motorR.forward(1)
+            print("Left")
+
+        # Rotate right
+        elif x == 'e':
+            motorL.forward(1)
+            motorR.backward(1)
+            print("Left")
+
+        # Move while steering left
         elif x == 'a':
             motorL.forward(0.5)
             motorR.forward(1)
             print("Left")
 
+        # Move while steering right
         elif x == 'd':
             motorL.forward(1)
             motorR.forward(0.5)
             print("Right")
 
+        # Brake
         elif x == ' ':
             motorL.stop()
             motorR.stop()
