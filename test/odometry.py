@@ -1,5 +1,3 @@
-# NOTE: The robot is moving backwards
-
 import math
 import time
 from threading import (Event, Thread)
@@ -24,6 +22,7 @@ acceleration = 0
 speed = 0
 distance = 0
 
+# Thread function
 def display_info():
     while True:
         print("Acceleration: %0.6f  m/s^2" % (acceleration))
@@ -45,25 +44,27 @@ while True:
     if target_distance <= 0:
         continue
 
-    motorL.backward()
-    motorR.backward()
-
     # Begin display thread
     event = Event()
     display_info_thread = Thread(target = display_info)
     display_info_thread.start()
 
+    # Start moving
+    motorL.forward()
+    motorR.forward()
+
     while distance < target_distance:
         accel_x, accel_y, accel_z = bno.acceleration
-        acceleration = -1 * accel_y
+        acceleration = accel_y
         speed += (acceleration * update_interval)
         distance += (speed * update_interval)
         
         time.sleep(update_interval)
 
+    # Stop moving
+    motorL.stop()
+    motorR.stop()
+
     # Stop the thread
     event.set()
     display_info_thread.join()
-
-    motorL.stop()
-    motorR.stop()
