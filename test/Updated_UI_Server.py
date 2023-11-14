@@ -145,7 +145,7 @@ def handle_client(client_socket):
                         motorR.forward(0.5)
                         print("Right")
 
-                    elif x == ' ':
+                    elif x == 'e':
                         motorL.stop()
                         motorR.stop()
                         print("Stop")
