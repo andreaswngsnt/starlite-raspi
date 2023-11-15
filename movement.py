@@ -1,8 +1,8 @@
 from gpiozero import Motor
 
 # Setup
-motorL = Motor(forward = 24, backward = 23)
-motorR = Motor(forward = 27, backward = 17)
+motorL = Motor(forward = 17, backward = 27)
+motorR = Motor(forward = 23, backward = 24)
 
 # Moves robot
 # Throttle : 0.1 to 1 (forward) or -0.1 to -1 (backward)
