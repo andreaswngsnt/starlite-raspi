@@ -1,7 +1,7 @@
 from gpiozero import Motor
 
 # Setup
-motorL = Motor(forward = 17, backward = 27)
+motorL = Motor(forward = 27, backward = 17)
 motorR = Motor(forward = 23, backward = 24)
 
 # Moves robot

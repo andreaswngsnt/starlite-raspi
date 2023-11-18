@@ -17,7 +17,7 @@ i2c = busio.I2C(board.SCL, board.SDA, frequency = baud_rate)
 bno = BNO08X_I2C(i2c)
 bno.enable_feature(BNO_REPORT_ACCELEROMETER)
 bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
-motorL = Motor(forward = 17, backward = 27)
+motorL = Motor(forward = 27, backward = 17)
 motorR = Motor(forward = 23, backward = 24)
 
 def euler_from_quaternion(x, y, z, w):
@@ -46,6 +46,8 @@ def euler_from_quaternion(x, y, z, w):
 accel_x = 0
 accel_y = 0
 accel_z = 0
+accel_x_offset = 0
+accel_y_offset = 0
 speed = 0
 distance = 0
 roll = 0
@@ -100,6 +102,8 @@ while True:
     accel_x = 0
     accel_y = 0
     accel_z = 0
+    accel_x_offset = 0
+    accel_y_offset = 0
     speed = 0
     distance = 0
 
@@ -113,7 +117,9 @@ while True:
     display_info_thread = Thread(target = display_info)
     display_info_thread.start()
 
-    # Get initial yaw
+    # Get initial readings & offset
+    accel_x_offset = bno.acceleration[0]
+    accel_y_offset = bno.acceleration[1]
     # initial_yaw = euler_from_quaternion(*bno.quaternion)[2]
 
     # Start moving
@@ -126,6 +132,10 @@ while True:
 
     # Keep calculating distance until target distance reached
     while distance < target_distance:
+        accel_x = bno.acceleration[0]
+        accel_y = bno.acceleration[1]
+        accel_z = bno.acceleration[2]
+
         accel_x, accel_y, accel_z = bno.acceleration
         speed += (accel_y * update_interval)
         distance += (speed * update_interval)
