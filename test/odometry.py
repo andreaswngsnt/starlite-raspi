@@ -53,7 +53,7 @@ distance = 0
 roll = 0
 pitch = 0
 yaw = 0
-initial_yaw = 0
+reference_yaw = 0
 throttle_L = 0.85
 throttle_R = 0.85
 
@@ -64,35 +64,46 @@ def display_info():
         print("Speed: %0.6f m/s" % (speed))
         print("Distance: %0.6f m" % (distance))
         print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % (roll, pitch, yaw))
+        print("Error: %0.6f" % (yaw - reference_yaw))
         time.sleep(0.5)
         
         if measuring_event.is_set():
             break
 
+def yaw_pid_controller(error):
+    error_radian = error * (math.pi / 180)
+    """
+    These k values are empirically determined
+    """
+
+    k_p = 0.0005
+    k_i = 1
+    k_d = 1
+
+    return k_p * error
+
 def correct_movement():
     global throttle_L, throttle_R
 
     while True:
-        # Compensate movement (3 degrees)
-        # If the robot veers left: speed left motor, slow right motor
-        yaw_sensitivity = 3
-        corrective_throttle = 0.03
-        if (yaw - initial_yaw > yaw_sensitivity) or ((yaw < 0 and initial_yaw > 0) and (360 + yaw - initial_yaw > yaw_sensitivity)):
-            if throttle_L + corrective_throttle < 0.99:
-                throttle_L += corrective_throttle
-                throttle_R -= corrective_throttle
+        """
+        Error:
+        - Positive error means that the robot is veering left
+        - Negative error means that the robot is veering right
+        """
+        error = (360 + yaw - reference_yaw) if (reference_yaw >= 0 and yaw < 0) else (yaw - reference_yaw)
+
+        # Compensate the movement by varying the right throttle
+        corrective_throttle = yaw_pid_controller(error)
+        if (throttle_L + corrective_throttle > 0.01) and (throttle_L + corrective_throttle < 0.99):
+            throttle_L += corrective_throttle
             motorL.forward(throttle_L)
+
+        if (throttle_R - corrective_throttle > 0.01) and (throttle_R - corrective_throttle < 0.99):
+            throttle_R -= corrective_throttle
             motorR.forward(throttle_R)
 
-        # If the robot veers right: slow left motor, speed right motor
-        elif (initial_yaw - yaw > yaw_sensitivity) or ((initial_yaw < 0 and yaw > 0) and (360 + initial_yaw - yaw > yaw_sensitivity)):
-            if throttle_R + corrective_throttle < 0.99:
-                throttle_L -= corrective_throttle
-                throttle_R += corrective_throttle
-            motorL.forward(throttle_L)
-            motorR.forward(throttle_R)
-
-        time.sleep(0.5)
+        time.sleep(0.1)
 
         if measuring_event.is_set():
             break
@@ -120,15 +131,15 @@ while True:
     # Get initial readings & offset
     accel_x_offset = bno.acceleration[0]
     accel_y_offset = bno.acceleration[1]
-    # initial_yaw = euler_from_quaternion(*bno.quaternion)[2]
+    reference_yaw = euler_from_quaternion(*bno.quaternion)[2]
 
     # Start moving
     motorL.forward(throttle_L)
     motorR.forward(throttle_R)
 
     # Begin movement correction thread
-    #correct_movement_thread = Thread(target = correct_movement)
-    #correct_movement_thread.start()
+    correct_movement_thread = Thread(target = correct_movement)
+    correct_movement_thread.start()
 
     # Keep calculating distance until target distance reached
     while distance < target_distance:
@@ -137,15 +148,15 @@ while True:
         accel_z = bno.acceleration[2]
 
         accel_x, accel_y, accel_z = bno.acceleration
-        speed += (accel_y * update_interval)
+        speed += (accel_x * update_interval)
         distance += (speed * update_interval)
-        # roll, pitch, yaw = euler_from_quaternion(*bno.quaternion)
+        roll, pitch, yaw = euler_from_quaternion(*bno.quaternion)
 
         time.sleep(update_interval)
 
     # Stop movement correction thread
     measuring_event.set()
-    #correct_movement_thread.join()
+    correct_movement_thread.join()
 
     # Stop moving
     motorL.stop()
