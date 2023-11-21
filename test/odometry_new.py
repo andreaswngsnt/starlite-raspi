@@ -87,7 +87,31 @@ class ControlSystem:
         
         return roll_x * (180 / math.pi), pitch_y * (180 / math.pi), yaw_z * (180 / math.pi) # in degrees
 
+    def display_info(self):
+        while True:
+            print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % (self.accel_x - self.accel_x_offset, self.accel_y - self.accel_y_offset, self.accel_z))
+            print("Speed: %0.6f m/s" % (self.speed))
+            print("Distance: %0.6f m" % (self.distance))
+            print("Error: %0.6f" % (self.yaw - self.reference_yaw))
+            print("L: %0.6f R: %0.6f" % (self.throttle_L, self.throttle_R))
+            #print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % (roll, pitch, yaw))
+            time.sleep(0.5)
+            
+            if measuring_event.is_set():
+                break
+
+    def reset_measurements(self):
+        self.accel_x = 0
+        self.accel_y = 0
+        self.accel_z = 0
+        self.accel_x_offset = 0
+        self.accel_y_offset = 0
+        self.speed = 0
+        self.distance = 0
+
     def move(self, reference_distance):
+        self.reset_measurements()
+
         while self.distance < reference_distance:
             self.accel_x, self.accel_y, self.accel_z = self.sensor.bno.acceleration
             self.speed += ((self.accel_y - self.accel_y_offset)  * self.update_interval)
