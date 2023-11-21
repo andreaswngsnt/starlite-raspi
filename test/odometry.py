@@ -54,33 +54,54 @@ roll = 0
 pitch = 0
 yaw = 0
 reference_yaw = 0
-throttle_L = 0.85
-throttle_R = 0.85
+throttle_L = 0.75
+throttle_R = 0.75
 
 # Thread functions
 def display_info():
     while True:
-        print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % (accel_x, accel_y, accel_z))
+        print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % (accel_x - accel_x_offset, accel_y - accel_y_offset, accel_z))
         print("Speed: %0.6f m/s" % (speed))
         print("Distance: %0.6f m" % (distance))
-        print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % (roll, pitch, yaw))
         print("Error: %0.6f" % (yaw - reference_yaw))
+        print("L: %0.6f R: %0.6f" % (throttle_L, throttle_R))
+        #print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % (roll, pitch, yaw))
         time.sleep(0.5)
         
         if measuring_event.is_set():
             break
 
+
+integrated_error = 0
+
 def yaw_pid_controller(error):
-    error_radian = error * (math.pi / 180)
+    global integrated_error
     """
     These k values are empirically determined
     """
+    integrated_error += (error * update_interval)
 
-    k_p = 0.0005
-    k_i = 1
+    k_p = 0.00005
+    k_i = 0
     k_d = 1
 
-    return k_p * error
+    return k_p * error + k_i * integrated_error
+
+class PIDController():
+    def __init__(self, k_p, k_i, k_d):
+        self.k_p = k_p
+        self.k_i = k_i
+        self.k_d = k_d
+        self.__integrated_error = 0
+        self.__prev_error = 0
+
+    def get_output(error, update_interval):
+        self.__integrated_error += (error * update_interval)
+        derivative_error = error - self.__prev_error
+        self.__prev_error = error
+        return self.k_p * error + self.k_i * self.__integrated_error + self.k_d * (derivative_error / update_interval)
+
+    
 
 def correct_movement():
     global throttle_L, throttle_R
@@ -103,7 +124,7 @@ def correct_movement():
             throttle_R -= corrective_throttle
             motorR.forward(throttle_R)
 
-        time.sleep(0.1)
+        time.sleep(update_interval)
 
         if measuring_event.is_set():
             break
@@ -148,7 +169,7 @@ while True:
         accel_z = bno.acceleration[2]
 
         accel_x, accel_y, accel_z = bno.acceleration
-        speed += (accel_x * update_interval)
+        speed += ((accel_y - accel_y_offset)  * update_interval)
         distance += (speed * update_interval)
         roll, pitch, yaw = euler_from_quaternion(*bno.quaternion)
 
