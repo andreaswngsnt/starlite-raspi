@@ -72,22 +72,7 @@ def display_info():
             break
 
 
-integrated_error = 0
-
-def yaw_pid_controller(error):
-    global integrated_error
-    """
-    These k values are empirically determined
-    """
-    integrated_error += (error * update_interval)
-
-    k_p = 0.00005
-    k_i = 0
-    k_d = 1
-
-    return k_p * error + k_i * integrated_error
-
-class PIDController():
+class PIDController:
     def __init__(self, k_p, k_i, k_d):
         self.k_p = k_p
         self.k_i = k_i
@@ -95,13 +80,40 @@ class PIDController():
         self.__integrated_error = 0
         self.__prev_error = 0
 
-    def get_output(error, update_interval):
+    def get_output(self, error, update_interval):
         self.__integrated_error += (error * update_interval)
         derivative_error = error - self.__prev_error
         self.__prev_error = error
         return self.k_p * error + self.k_i * self.__integrated_error + self.k_d * (derivative_error / update_interval)
-
     
+    def reset(self):
+        self.__integrated_error = 0
+        self.__prev_error = 0
+
+class Plant:
+    def __init__(self):
+        self.motor_L = Motor(forward = 27, backward = 17)
+        self.motor_R = Motor(forward = 23, backward = 24)
+
+    def __del__(self):
+        self.motor_L.stop()
+        self.motor_R.stop()
+
+class Sensor:
+    def __init__(self):
+        self.bno = BNO08X_I2C(
+            busio.I2C(board.SCL, board.SDA, frequency = 400000)
+            )
+        self.bno.enable_feature(BNO_REPORT_ACCELEROMETER)
+        self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
+
+class ControlSystem:
+    def __init__(self):
+        self.controller = PIDController(0.00005, 0, 1)
+        self.plant = Plant()
+        self.sensor = Sensor()
+
+yaw_pid_controller = PIDController(0.00005, 0, 1)
 
 def correct_movement():
     global throttle_L, throttle_R
@@ -115,7 +127,7 @@ def correct_movement():
         error = (360 + yaw - reference_yaw) if (reference_yaw >= 0 and yaw < 0) else (yaw - reference_yaw)
 
         # Compensate the movement by varying the right throttle
-        corrective_throttle = yaw_pid_controller(error)
+        corrective_throttle = yaw_pid_controller.get_output(error, update_interval)
         if (throttle_L + corrective_throttle > 0.01) and (throttle_L + corrective_throttle < 0.99):
             throttle_L += corrective_throttle
             motorL.forward(throttle_L)
@@ -164,10 +176,6 @@ while True:
 
     # Keep calculating distance until target distance reached
     while distance < target_distance:
-        accel_x = bno.acceleration[0]
-        accel_y = bno.acceleration[1]
-        accel_z = bno.acceleration[2]
-
         accel_x, accel_y, accel_z = bno.acceleration
         speed += ((accel_y - accel_y_offset)  * update_interval)
         distance += (speed * update_interval)
