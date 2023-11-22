@@ -120,6 +120,10 @@ class ControlSystem:
         self.pitch = 0
         self.yaw = 0
 
+    def reset_throttle(self):
+        self.throttle_L = 0.75
+        self.throttle_R = 0.75
+
     def correct_movement(self):
         while True:
             """
@@ -146,6 +150,7 @@ class ControlSystem:
 
     def move(self, reference_distance):
         self.reset_measurements()
+        self.reset_throttle()
 
         # Begin display thread
         self.measuring_event = Event()
@@ -182,6 +187,11 @@ class ControlSystem:
 
         # Stop display thread
         display_info_thread.join()
+
+    def rotate(self, reference_yaw):
+        
+        return
+
 
 
 control_system = ControlSystem()
