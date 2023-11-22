@@ -33,6 +33,10 @@ class Plant:
         self.motor_L = Motor(forward = 27, backward = 17)
         self.motor_R = Motor(forward = 23, backward = 24)
 
+    def stop(self):
+        self.motor_L.stop()
+        self.motor_R.stop()
+
     def __del__(self):
         self.motor_L.stop()
         self.motor_R.stop()
@@ -64,6 +68,7 @@ class ControlSystem:
         self.reference_yaw = 0
         self.throttle_L = 0.75
         self.throttle_R = 0.75
+        self.measuring_event = None
 
     def euler_from_quaternion(x, y, z, w):
         """
@@ -97,7 +102,7 @@ class ControlSystem:
             #print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % (roll, pitch, yaw))
             time.sleep(0.5)
             
-            if measuring_event.is_set():
+            if self.measuring_event.is_set():
                 break
 
     def reset_measurements(self):
@@ -109,8 +114,37 @@ class ControlSystem:
         self.speed = 0
         self.distance = 0
 
+    def correct_movement(self):
+        while True:
+            """
+            Error:
+            - Positive error means that the robot is veering left
+            - Negative error means that the robot is veering right
+            """
+            error = (360 + self.yaw - self.reference_yaw) if (self.reference_yaw >= 0 and self.yaw < 0) else (self.yaw - self.reference_yaw)
+
+            # Compensate the movement by varying the right throttle
+            corrective_throttle = self.controller.get_output(error, self.update_interval)
+            if (self.throttle_L + corrective_throttle > 0.01) and (self.throttle_L + corrective_throttle < 0.99):
+                self.throttle_L += corrective_throttle
+                self.plant.motor_L.forward(self.throttle_L)
+
+            if (self.throttle_R - corrective_throttle > 0.01) and (self.throttle_R - corrective_throttle < 0.99):
+                self.throttle_R -= corrective_throttle
+                self.plant.motor_R.forward(self.throttle_R)
+
+            time.sleep(self.update_interval)
+
+            if self.measuring_event.is_set():
+                break
+
     def move(self, reference_distance):
         self.reset_measurements()
+
+        # Begin display thread
+        self.measuring_event = Event()
+        display_info_thread = Thread(target = self.display_info)
+        display_info_thread.start()
 
         while self.distance < reference_distance:
             self.accel_x, self.accel_y, self.accel_z = self.sensor.bno.acceleration
@@ -120,10 +154,18 @@ class ControlSystem:
 
             time.sleep(self.update_interval)
 
+        self.plant.stop()
+
+        # Stop movement correction thread
+        self.measuring_event.set()
+        self.correct_movement_thread.join()
+
+        # Stop display thread
+        display_info_thread.join()
+
 control_system = ControlSystem()
 
 while True:
     target_distance = int(input("Enter distance to travel: "))
 
     control_system.move(target_distance)
-
