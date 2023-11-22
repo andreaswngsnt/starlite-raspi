@@ -34,6 +34,21 @@ class Plant:
         self.motor_L = Motor(forward = 27, backward = 17)
         self.motor_R = Motor(forward = 23, backward = 24)
 
+    def move(self, throttle_L, throttle_R):
+        if throttle_L > 1:
+            self.motor_L.forward(1)
+        elif throttle_L < 0:
+            self.motor_L.backward(-1 * throttle_L)
+        else:
+            self.motor_L.forward(throttle_L)
+
+        if throttle_R > 1:
+            self.motor_R.forward(1)
+        elif throttle_R < 0:
+            self.motor_R.backward(-1 * throttle_R)
+        else:
+            self.motor_R.forward(throttle_R)
+
     def stop(self):
         self.motor_L.stop()
         self.motor_R.stop()
@@ -97,7 +112,7 @@ class ControlSystem:
 
     def display_info(self):
         while True:
-            print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % (self.accel_x - self.accel_x_offset, self.accel_y - self.accel_y_offset, self.accel_z))
+            print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % (self.accel_x, self.accel_y, self.accel_z))
             print("Speed: %0.6f m/s" % (self.speed))
             print("Distance: %0.6f m" % (self.distance))
             print("Error: %0.6f" % (self.yaw - self.reference_yaw))
@@ -121,27 +136,22 @@ class ControlSystem:
         self.yaw = 0
 
     def reset_throttle(self):
-        self.throttle_L = 0.75
-        self.throttle_R = 0.75
+        self.throttle_L = 0
+        self.throttle_R = 0
 
-    def correct_movement(self):
+    def correct_yaw(self):
         while True:
             """
             Error:
-            - Positive error means that the robot is veering left
-            - Negative error means that the robot is veering right
+            - Positive error means that the robot is too left
+            - Negative error means that the robot is too right
             """
             error = (360 + self.yaw - self.reference_yaw) if (self.reference_yaw >= 0 and self.yaw < 0) else (self.yaw - self.reference_yaw)
 
-            # Compensate the movement by varying the right throttle
+            # Correct the yaw by changing the throttles
             corrective_throttle = self.controller.get_output(error, self.update_interval)
-            if (self.throttle_L + corrective_throttle > 0.01) and (self.throttle_L + corrective_throttle < 0.99):
-                self.throttle_L += corrective_throttle
-                self.plant.motor_L.forward(self.throttle_L)
-
-            if (self.throttle_R - corrective_throttle > 0.01) and (self.throttle_R - corrective_throttle < 0.99):
-                self.throttle_R -= corrective_throttle
-                self.plant.motor_R.forward(self.throttle_R)
+            self.throttle_L += corrective_throttle
+            self.throttle_R -= corrective_throttle
 
             time.sleep(self.update_interval)
 
@@ -150,30 +160,31 @@ class ControlSystem:
 
     def move(self, reference_distance):
         self.reset_measurements()
-        self.reset_throttle()
-
-        # Begin display thread
-        self.measuring_event = Event()
-        display_info_thread = Thread(target = self.display_info)
-        display_info_thread.start()
+        self.throttle_L = 0.8
+        self.throttle_R = 0.8
 
         # Get initial readings & offset
         self.accel_x_offset = self.sensor.bno.acceleration[0]
         self.accel_y_offset = self.sensor.bno.acceleration[1]
         self.reference_yaw = self.euler_from_quaternion(*self.sensor.bno.quaternion)[2]
+        
+        # Begin display thread
+        self.measuring_event = Event()
+        display_info_thread = Thread(target = self.display_info)
+        display_info_thread.start()
 
-        # Begin moving
-        self.plant.motor_L.forward(self.throttle_L)
-        self.plant.motor_R.forward(self.throttle_R)
-
-        # Begin movement correction thread
-        correct_movement_thread = Thread(target = self.correct_movement)
-        correct_movement_thread.start()
+        # Begin yaw correction thread
+        correct_yaw_thread = Thread(target = self.correct_yaw)
+        correct_yaw_thread.start()
 
         # Keep calculating distance until target distance reached
         while self.distance < reference_distance:
+            # Move
+            self.plant.move(self.throttle_L, self.throttle_R)
+
+            # Read off sensors
             self.accel_x, self.accel_y, self.accel_z = self.sensor.bno.acceleration
-            self.speed += ((self.accel_y - self.accel_y_offset)  * self.update_interval)
+            self.speed += ((self.accel_y)  * self.update_interval)
             self.distance += (self.speed * self.update_interval)
             self.roll, self.pitch, self.yaw = self.euler_from_quaternion(*self.sensor.bno.quaternion)
 
@@ -181,16 +192,57 @@ class ControlSystem:
 
         self.plant.stop()
 
-        # Stop movement correction thread
+        # Stop yaw correction thread
         self.measuring_event.set()
-        self.correct_movement_thread.join()
+        correct_yaw_thread.join()
 
         # Stop display thread
         display_info_thread.join()
 
-    def rotate(self, reference_yaw):
+    def rotate(self, reference_angle):
+        self.reset_measurements()
+        self.reset_throttle()
+
+        # Get initial readings & set reference yaw
+        self.yaw = self.euler_from_quaternion(*self.sensor.bno.quaternion)[2]
+        if self.yaw + reference_angle >= 180:
+            self.reference_yaw = self.yaw + reference_angle - 360
+        elif self.yaw + reference_angle <= -180:
+            self.reference_yaw = self.yaw + reference_angle + 360
+        else:
+            self.reference_yaw = self.yaw + reference_angle
+
+        # Begin display thread
+        self.measuring_event = Event()
+        display_info_thread = Thread(target = self.display_info)
+        display_info_thread.start()
+
+        # Begin yaw correction thread
+        correct_yaw_thread = Thread(target = self.correct_yaw)
+        correct_yaw_thread.start()
+
+        # Keep reading off sensor until target yaw reached
+        error = (360 + self.yaw - self.reference_yaw) if (self.reference_yaw >= 0 and self.yaw < 0) else (self.yaw - self.reference_yaw)
+        while error > 1:
+            # Rotate
+            self.plant.move(self.throttle_L, self.throttle_R)
+
+            # Read off sensors
+            self.accel_x, self.accel_y, self.accel_z = self.sensor.bno.acceleration
+            self.speed += ((self.accel_y)  * self.update_interval)
+            self.distance += (self.speed * self.update_interval)
+            self.roll, self.pitch, self.yaw = self.euler_from_quaternion(*self.sensor.bno.quaternion)
+
+            time.sleep(self.update_interval)
+
+        self.plant.stop()
         
-        return
+        # Stop yaw correction thread
+        self.measuring_event.set()
+        correct_yaw_thread.join()
+
+        # Stop display thread
+        display_info_thread.join()
 
 
 
@@ -198,8 +250,12 @@ control_system = ControlSystem()
 
 while True:
     target_distance = int(input("Enter distance to travel: "))
-
     if target_distance <= 0:
         continue
 
+    target_angle = float(input("Enter angle to face: "))
+    if target_angle > 180 or target_angle <= -180:
+        continue
+
+    control_system.rotate(target_angle)
     control_system.move(target_distance)
