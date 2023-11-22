@@ -10,6 +10,7 @@ from adafruit_bno08x import (
 )
 from adafruit_bno08x.i2c import BNO08X_I2C
 
+# PID Controller: Takes in error and computes the required throttles
 class PIDController:
     def __init__(self, k_p, k_i, k_d):
         self.k_p = k_p
@@ -29,6 +30,7 @@ class PIDController:
         self.__prev_error = 0
 
 
+# Plant: Takes in throttle values & moves the motors
 class Plant:
     def __init__(self):
         self.motor_L = Motor(forward = 27, backward = 17)
@@ -58,35 +60,23 @@ class Plant:
         self.motor_R.stop()
 
 
+# Sensor: Read & Compute off the sensor readings
 class Sensor:
-    def __init__(self):
+    def __init__(self, update_interval):
         self.bno = BNO08X_I2C(
             busio.I2C(board.SCL, board.SDA, frequency = 400000)
             )
         self.bno.enable_feature(BNO_REPORT_ACCELEROMETER)
         self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
-
-
-class ControlSystem:
-    def __init__(self):
-        self.controller = PIDController(0.0001, 0, 0.0001)
-        self.plant = Plant()
-        self.sensor = Sensor()
-        self.update_interval = 1 / 100
+        self.update_interval = update_interval
         self.accel_x = 0
         self.accel_y = 0
         self.accel_z = 0
-        self.accel_x_offset = 0
-        self.accel_y_offset = 0
         self.speed = 0
         self.distance = 0
         self.roll = 0
         self.pitch = 0
         self.yaw = 0
-        self.reference_yaw = 0
-        self.throttle_L = 0.75
-        self.throttle_R = 0.75
-        self.measuring_event = None
 
     def euler_from_quaternion(self, x, y, z, w):
         """
@@ -109,6 +99,40 @@ class ControlSystem:
         yaw_z = math.atan2(t3, t4)
         
         return roll_x * (180 / math.pi), pitch_y * (180 / math.pi), yaw_z * (180 / math.pi) # in degrees
+
+    def compute_speed_distance(self):
+        while True:
+            self.accel_x, self.accel_y, self.accel_z = self.get_acceleration()
+            self.speed += ((self.accel_y)  * self.update_interval)
+            self.distance += (self.speed * self.update_interval)
+            time.sleep(self.update_interval)
+    
+    def get_acceleration(self):
+        return self.bno.acceleration
+    def get_angles_degrees(self):
+        return self.euler_from_quaternion(*self.bno.quaternion)
+
+
+class ControlSystem:
+    def __init__(self):
+        self.controller = PIDController(0.0001, 0, 0.0001)
+        self.plant = Plant()
+        self.sensor = Sensor(1 / 100)
+        self.update_interval = 1 / 100
+        self.accel_x = 0
+        self.accel_y = 0
+        self.accel_z = 0
+        self.accel_x_offset = 0
+        self.accel_y_offset = 0
+        self.speed = 0
+        self.distance = 0
+        self.roll = 0
+        self.pitch = 0
+        self.yaw = 0
+        self.reference_yaw = 0
+        self.throttle_L = 0.75
+        self.throttle_R = 0.75
+        self.measuring_event = None
 
     def display_info(self):
         while True:
@@ -164,9 +188,9 @@ class ControlSystem:
         self.throttle_R = 0.8
 
         # Get initial readings & offset
-        self.accel_x_offset = self.sensor.bno.acceleration[0]
-        self.accel_y_offset = self.sensor.bno.acceleration[1]
-        self.reference_yaw = self.euler_from_quaternion(*self.sensor.bno.quaternion)[2]
+        self.accel_x_offset = self.sensor.get_acceleration()[0]
+        self.accel_y_offset = self.sensor.get_acceleration()[1]
+        self.reference_yaw = self.sensor.get_angles_degrees()[2]
         
         # Begin display thread
         self.measuring_event = Event()
@@ -183,10 +207,10 @@ class ControlSystem:
             self.plant.move(self.throttle_L, self.throttle_R)
 
             # Read off sensors
-            self.accel_x, self.accel_y, self.accel_z = self.sensor.bno.acceleration
+            self.accel_x, self.accel_y, self.accel_z = self.sensor.get_acceleration()
             self.speed += ((self.accel_y)  * self.update_interval)
             self.distance += (self.speed * self.update_interval)
-            self.roll, self.pitch, self.yaw = self.euler_from_quaternion(*self.sensor.bno.quaternion)
+            self.roll, self.pitch, self.yaw = self.sensor.get_angles_degrees()
 
             time.sleep(self.update_interval)
 
@@ -204,7 +228,7 @@ class ControlSystem:
         self.reset_throttle()
 
         # Get initial readings & set reference yaw
-        self.yaw = self.euler_from_quaternion(*self.sensor.bno.quaternion)[2]
+        self.yaw = self.sensor.get_angles_degrees()[2]
         if self.yaw + reference_angle >= 180:
             self.reference_yaw = self.yaw + reference_angle - 360
         elif self.yaw + reference_angle <= -180:
@@ -228,10 +252,10 @@ class ControlSystem:
             self.plant.move(self.throttle_L, self.throttle_R)
 
             # Read off sensors
-            self.accel_x, self.accel_y, self.accel_z = self.sensor.bno.acceleration
+            self.accel_x, self.accel_y, self.accel_z = self.sensor.get_acceleration()
             self.speed += ((self.accel_y)  * self.update_interval)
             self.distance += (self.speed * self.update_interval)
-            self.roll, self.pitch, self.yaw = self.euler_from_quaternion(*self.sensor.bno.quaternion)
+            self.roll, self.pitch, self.yaw = self.sensor.get_angles_degrees()
 
             time.sleep(self.update_interval)
 
