@@ -8,6 +8,12 @@ import pygame
 HOST = '192.168.0.185'  # Listen on all available network interfaces
 TCP_PORT = 12345  # Port to listen on for TCP
 
+
+# Manual Control Program (Start)
+# Setup
+motorL = Motor(forward = 27, backward = 17)
+motorR = Motor(forward = 23, backward = 24)
+
 def handle_client(client_socket):
     while True:
         try:
@@ -17,14 +23,6 @@ def handle_client(client_socket):
                 break
             if not data:
                 break  # If no data is received, close the connection
-
-            # Manual Control Program (Start)
-            # Setup
-            motorL = Motor(forward = 27, backward = 17)
-            motorR = Motor(forward = 23, backward = 24)
-
-
-
     
             # Intro message
             print("Keyboard Controls:")
