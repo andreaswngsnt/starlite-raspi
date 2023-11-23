@@ -67,7 +67,11 @@ def handle_client(client_socket):
                 motorL.stop()
                 motorR.stop()
                 print("Stop")
-                
+
+            sleep(1)
+
+            #motorL.stop()
+            #motorR.stop()
             # Manual Control Program (End)
 
         except ConnectionResetError:
