@@ -31,51 +31,52 @@ def handle_client(client_socket):
             print("- A : Turn Left")
             print("- D : Turn right")
             print("- <space> : Stop")
-            
-            # Toggle control
-            # Move forward
-            if data == 'w':
-                motorL.forward()
-                motorR.forward()
-                print("Forward")
 
-            # Move backward
-            elif data == 's':
-                motorL.backward()
-                motorR.backward()
-                print("Backward")
-
-            # Rotate left
-            elif data == 'q':
-                motorL.backward(1)
-                motorR.forward(1)
-                print("Left")
-
-            # Rotate right
-            elif data == 'e':
-                motorL.forward(1)
-                motorR.backward(1)
-                print("Left")
-
-            # Move while steering left
-            elif data == 'a':
-                motorL.forward(0.5)
-                motorR.forward(1)
-                print("Left")
-
-            # Move while steering right
-            elif data == 'd':
-                motorL.forward(1)
-                motorR.forward(0.5)
-                print("Right")
-
-            # Brake
-            elif data == ' ':
-                motorL.stop()
-                motorR.stop()
-                print("Stop")
-
-            sleep(1)
+            while True:
+                # Toggle control
+                # Move forward
+                if data == 'w':
+                    motorL.forward()
+                    motorR.forward()
+                    print("Forward")
+    
+                # Move backward
+                elif data == 's':
+                    motorL.backward()
+                    motorR.backward()
+                    print("Backward")
+    
+                # Rotate left
+                elif data == 'q':
+                    motorL.backward(1)
+                    motorR.forward(1)
+                    print("Left")
+    
+                # Rotate right
+                elif data == 'e':
+                    motorL.forward(1)
+                    motorR.backward(1)
+                    print("Left")
+    
+                # Move while steering left
+                elif data == 'a':
+                    motorL.forward(0.5)
+                    motorR.forward(1)
+                    print("Left")
+    
+                # Move while steering right
+                elif data == 'd':
+                    motorL.forward(1)
+                    motorR.forward(0.5)
+                    print("Right")
+    
+                # Brake
+                elif data == ' ':
+                    motorL.stop()
+                    motorR.stop()
+                    print("Stop")
+    
+                sleep(1)
     
 
             motorL.stop()
