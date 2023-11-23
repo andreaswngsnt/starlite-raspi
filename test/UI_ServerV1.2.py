@@ -68,7 +68,7 @@ def handle_client(client_socket):
                 motorR.stop()
                 print("Stop")
 
-            #sleep(1)
+            sleep(1)
 
             #motorL.stop()
             #motorR.stop()
