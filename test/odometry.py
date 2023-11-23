@@ -84,7 +84,7 @@ class Sensor:
         self.display_info_thread = None
         self.compute_speed_distance_thread = None
 
-    def activate(self, display_callback):
+    def activate(self, display_callback = None):
         self.active_event = Event()
 
         # Create & start compute thread
@@ -93,7 +93,7 @@ class Sensor:
         
         # Create & start display thread
         if display_callback is not None:
-            self.display_info_thread = Thread(target = self.display_info, args = display_callback)
+            self.display_info_thread = Thread(target = self.display_info, args = [display_callback])
         else:
             self.display_info_thread = Thread(target = self.display_info)
         self.display_info_thread.start()
@@ -129,7 +129,7 @@ class Sensor:
         
         return roll_x * (180 / math.pi), pitch_y * (180 / math.pi), yaw_z * (180 / math.pi) # in degrees
 
-    def display_info(self, callback):
+    def display_info(self, callback = None):
         while True:
             print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % self.get_acceleration())
             print("Speed: %0.6f m/s" % self.speed)
@@ -137,7 +137,7 @@ class Sensor:
             print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % self.get_angles_degrees())
 
             if callback is not None:
-                callback(self.get_acceleration(), self.get_speed(), self.get_distance(), self.get_angles_degrees)
+                callback(self.get_acceleration(), self.get_speed(), self.get_distance(), self.get_angles_degrees())
 
             time.sleep(0.5)
             
@@ -191,20 +191,20 @@ class ControlSystem:
     def compute_yaw_error(self):
         """
         Error:
-        - Positive error means that the robot needs to turn CCW
-        - Negative error means that the robot needs to turn CW
+        - Positive error means that the rover needs to turn CCW
+        - Negative error means that the rover needs to turn CW
         """
-        if (self.reference_yaw < 0 and self.sensor.get_angles_degrees()[2] >= 0):
-            return 360 + self.reference_yaw - self.sensor.get_angles_degrees()[2]
+        if self.reference_yaw - self.sensor.get_angles_degrees()[2] <= -180:
+            return self.reference_yaw - self.sensor.get_angles_degrees()[2] + 360
+        elif self.reference_yaw - self.sensor.get_angles_degrees()[2] > 180:
+            return self.reference_yaw - self.sensor.get_angles_degrees()[2] - 360
         else:
             return self.reference_yaw - self.sensor.get_angles_degrees()[2]
 
     def correct_yaw(self):
         while True:
-            error = self.compute_yaw_error()
-
             # Correct the yaw by changing the throttles
-            corrective_throttle = self.controller.get_output(error, self.update_interval)
+            corrective_throttle = self.controller.get_output(self.compute_yaw_error(), self.update_interval)
             self.throttle_L -= corrective_throttle
             self.throttle_R += corrective_throttle
 
@@ -259,6 +259,9 @@ class ControlSystem:
         else:
             self.reference_yaw = initial_yaw + reference_angle
 
+        print("Initial yaw: %0.6f" % initial_yaw)
+        print("Reference yaw: %0.6f" % self.reference_yaw)
+
         # Activate the sensor
         self.sensor.activate(self.display_extra_info)
 
@@ -267,19 +270,12 @@ class ControlSystem:
         correct_yaw_thread = Thread(target = self.correct_yaw)
         correct_yaw_thread.start()
         
-        print("Initial yaw: %0.6f" % initial_yaw)
-        print("Reference yaw: %0.6f" % self.reference_yaw)
-
         # Keep reading off sensor until target yaw reached
         while self.compute_yaw_error() < -1 or self.compute_yaw_error() > 1:
             # Rotate
             self.plant.move(self.throttle_L, self.throttle_R)
 
             time.sleep(self.update_interval)
-
-        print("Reference yaw: %0.6f" % self.reference_yaw)
-        print("Final yaw: %0.6f" % self.sensor.get_angles_degrees()[2])
-        print("Final error: %0.6f" % error)
 
         self.plant.stop()
         
@@ -290,6 +286,10 @@ class ControlSystem:
         # Deactivate sensor
         self.sensor.deactivate()
         self.sensor.reset()
+
+        print("Reference yaw: %0.6f" % self.reference_yaw)
+        print("Final yaw: %0.6f" % self.sensor.get_angles_degrees()[2])
+        print("Final error: %0.6f" % self.compute_yaw_error())
 
         self.reset_throttle()
 
@@ -307,7 +307,8 @@ while True:
         continue
 
     control_system.rotate(target_angle)
-    #control_system.move(target_distance)
-
+    print("")
+    print("")
+    control_system.move(target_distance)
     print("")
     print("")
