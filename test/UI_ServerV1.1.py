@@ -35,22 +35,6 @@ def handle_client(client_socket):
             print("- <space> : Stop")
 
             while True:
-                # TODO: Button press control
-                """ if keyboard.is_pressed('w'):
-                    motorL.forward()
-                    motorR.forward()
-                    print("Forward")
-
-                elif keyboard.is_pressed('s'):
-                    motorL.backward()
-                    motorR.backward()
-                    print("Backward")
-
-                else:
-                    motorL.stop()
-                    motorR.stop()
-                    print("Stop") """
-
                 # Toggle control
                 # Move forward
                 if data == 'w':
