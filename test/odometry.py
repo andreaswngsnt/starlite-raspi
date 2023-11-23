@@ -18,6 +18,11 @@ class PIDController:
         self.k_d = k_d
         self.__integrated_error = 0
         self.__prev_error = 0
+        self.output = 0
+
+    def reset(self):
+        self.__integrated_error = 0
+        self.__prev_error = 0
 
     def get_output(self, error, update_interval):
         self.__integrated_error += (error * update_interval)
@@ -25,9 +30,6 @@ class PIDController:
         self.__prev_error = error
         return self.k_p * error + self.k_i * self.__integrated_error + self.k_d * (derivative_error / update_interval)
     
-    def reset(self):
-        self.__integrated_error = 0
-        self.__prev_error = 0
 
 
 # Plant: Takes in throttle values & moves the motors
@@ -68,34 +70,42 @@ class Plant:
         self.motor_R.stop()
 
 
+
 # Sensor: Read & Compute off the sensor readings
 class Sensor:
     def __init__(self, update_interval):
-        self.bno = BNO08X_I2C(
-            busio.I2C(board.SCL, board.SDA, frequency = 400000)
-            )
+        self.bno = BNO08X_I2C(busio.I2C(board.SCL, board.SDA, frequency = 400000))
         self.bno.enable_feature(BNO_REPORT_ACCELEROMETER)
         self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
         self.update_interval = update_interval
-        self.accel_x = 0
-        self.accel_y = 0
-        self.accel_z = 0
         self.speed = 0
         self.distance = 0
-        self.roll = 0
-        self.pitch = 0
-        self.yaw = 0
         self.active_event = None
+        self.display_info_thread = None
+        self.compute_speed_distance_thread = None
 
-    def reset_measurements(self):
-        self.accel_x = 0
-        self.accel_y = 0
-        self.accel_z = 0
+    def activate(self, display_callback):
+        self.active_event = Event()
+
+        # Create & start compute thread
+        self.compute_speed_distance_thread = Thread(target = self.compute_speed_distance)
+        self.compute_speed_distance_thread.start()
+        
+        # Create & start display thread
+        if display_callback is not None:
+            self.display_info_thread = Thread(target = self.display_info, args = display_callback)
+        else:
+            self.display_info_thread = Thread(target = self.display_info)
+        self.display_info_thread.start()
+
+    def deactivate(self):
+        self.active_event.set()
+        self.display_info_thread.join()
+        self.compute_speed_distance_thread.join()
+
+    def reset(self):
         self.speed = 0
         self.distance = 0
-        self.roll = 0
-        self.pitch = 0
-        self.yaw = 0
 
     def euler_from_quaternion(self, x, y, z, w):
         """
@@ -119,12 +129,16 @@ class Sensor:
         
         return roll_x * (180 / math.pi), pitch_y * (180 / math.pi), yaw_z * (180 / math.pi) # in degrees
 
-    def display_info(self):
+    def display_info(self, callback):
         while True:
-            print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % (self.accel_x, self.accel_y, self.accel_z))
-            print("Speed: %0.6f m/s" % (self.speed))
-            print("Distance: %0.6f m" % (self.distance))
-            print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % (self.get_angles_degrees()))
+            print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % self.get_acceleration())
+            print("Speed: %0.6f m/s" % self.speed)
+            print("Distance: %0.6f m" % self.distance)
+            print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % self.get_angles_degrees())
+
+            if callback is not None:
+                callback(self.get_acceleration(), self.get_speed(), self.get_distance(), self.get_angles_degrees)
+
             time.sleep(0.5)
             
             if self.active_event.is_set():
@@ -132,8 +146,7 @@ class Sensor:
 
     def compute_speed_distance(self):
         while True:
-            self.accel_x, self.accel_y, self.accel_z = self.get_acceleration()
-            self.speed += ((self.accel_y)  * self.update_interval)
+            self.speed += (self.get_acceleration()[1]  * self.update_interval)
             self.distance += (self.speed * self.update_interval)
             time.sleep(self.update_interval)
 
@@ -150,6 +163,7 @@ class Sensor:
         return self.euler_from_quaternion(*self.bno.quaternion)
 
 
+
 class ControlSystem:
     def __init__(self):
         """
@@ -160,165 +174,124 @@ class ControlSystem:
         self.plant = Plant()
         self.sensor = Sensor(1 / 100)
         self.update_interval = 1 / 100
-        self.accel_x = 0
-        self.accel_y = 0
-        self.accel_z = 0
-        self.accel_x_offset = 0
-        self.accel_y_offset = 0
-        self.speed = 0
-        self.distance = 0
-        self.roll = 0
-        self.pitch = 0
-        self.yaw = 0
         self.reference_yaw = 0
-        self.throttle_L = 0.75
-        self.throttle_R = 0.75
+        self.throttle_L = 0
+        self.throttle_R = 0
         self.measuring_event = None
 
-    def display_info(self):
-        while True:
-            print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % (self.accel_x, self.accel_y, self.accel_z))
-            print("Speed: %0.6f m/s" % (self.speed))
-            print("Distance: %0.6f m" % (self.distance))
-            print("Error: %0.6f" % (self.yaw - self.reference_yaw))
-            print("L: %0.6f R: %0.6f" % (self.throttle_L, self.throttle_R))
-            print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % (self.roll, self.pitch, self.yaw))
-            time.sleep(0.5)
-            
-            if self.measuring_event.is_set():
-                break
-
-    def reset_measurements(self):
-        self.accel_x = 0
-        self.accel_y = 0
-        self.accel_z = 0
-        self.accel_x_offset = 0
-        self.accel_y_offset = 0
-        self.speed = 0
-        self.distance = 0
-        self.roll = 0
-        self.pitch = 0
-        self.yaw = 0
+    def display_extra_info(self, acceleration, speed, distance, degrees):
+        print("Error: %0.6f" % self.compute_yaw_error())
+        print("L: %0.6f R: %0.6f" % (self.throttle_L, self.throttle_R))
+        print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % degrees)
 
     def reset_throttle(self):
         self.throttle_L = 0
         self.throttle_R = 0
 
+    def compute_yaw_error(self):
+        """
+        Error:
+        - Positive error means that the robot needs to turn CCW
+        - Negative error means that the robot needs to turn CW
+        """
+        if (self.reference_yaw < 0 and self.sensor.get_angles_degrees()[2] >= 0):
+            return 360 + self.reference_yaw - self.sensor.get_angles_degrees()[2]
+        else:
+            return self.reference_yaw - self.sensor.get_angles_degrees()[2]
+
     def correct_yaw(self):
         while True:
-            """
-            Error:
-            - Positive error means that the robot is too left
-            - Negative error means that the robot is too right
-            """
-            error = (360 + self.yaw - self.reference_yaw) if (self.reference_yaw >= 0 and self.yaw < 0) else (self.yaw - self.reference_yaw)
+            error = self.compute_yaw_error()
 
             # Correct the yaw by changing the throttles
             corrective_throttle = self.controller.get_output(error, self.update_interval)
-            self.throttle_L += corrective_throttle
-            self.throttle_R -= corrective_throttle
+            self.throttle_L -= corrective_throttle
+            self.throttle_R += corrective_throttle
 
             time.sleep(self.update_interval)
 
-            if self.measuring_event.is_set():
+            if self.yaw_correction_event.is_set():
                 break
 
     def move(self, reference_distance):
-        self.reset_measurements()
         self.throttle_L = 0.8
         self.throttle_R = 0.8
 
         # Get initial readings & offset
-        self.accel_x_offset = self.sensor.get_acceleration()[0]
-        self.accel_y_offset = self.sensor.get_acceleration()[1]
         self.reference_yaw = self.sensor.get_angles_degrees()[2]
         
-        # Begin display thread
-        self.measuring_event = Event()
-        display_info_thread = Thread(target = self.display_info)
-        display_info_thread.start()
+        # Activate sensor
+        self.sensor.activate()
 
         # Begin yaw correction thread
+        self.yaw_correction_event = Event()
         correct_yaw_thread = Thread(target = self.correct_yaw)
         correct_yaw_thread.start()
 
         # Keep calculating distance until target distance reached
-        while self.distance < reference_distance:
+        while self.sensor.get_distance() < reference_distance:
             # Move
             self.plant.move(self.throttle_L, self.throttle_R)
 
-            # Read off sensors
-            self.accel_x, self.accel_y, self.accel_z = self.sensor.get_acceleration()
-            self.speed += ((self.accel_y)  * self.update_interval)
-            self.distance += (self.speed * self.update_interval)
-            self.roll, self.pitch, self.yaw = self.sensor.get_angles_degrees()
-
             time.sleep(self.update_interval)
 
         self.plant.stop()
 
         # Stop yaw correction thread
-        self.measuring_event.set()
+        self.yaw_correction_event.set()
         correct_yaw_thread.join()
 
-        # Stop display thread
-        display_info_thread.join()
+        # Deactivate sensor
+        self.sensor.deactivate()
+        self.sensor.reset()
+
+        self.reset_throttle()
 
     def rotate(self, reference_angle):
-        self.reset_measurements()
         self.reset_throttle()
 
         # Get initial readings & set reference yaw
-        self.yaw = self.sensor.get_angles_degrees()[2]
-        if self.yaw + reference_angle >= 180:
-            self.reference_yaw = self.yaw + reference_angle - 360
-        elif self.yaw + reference_angle <= -180:
-            self.reference_yaw = self.yaw + reference_angle + 360
+        initial_yaw = self.sensor.get_angles_degrees()[2]
+        if initial_yaw + reference_angle >= 180:
+            self.reference_yaw = initial_yaw + reference_angle - 360
+        elif initial_yaw + reference_angle <= -180:
+            self.reference_yaw = initial_yaw + reference_angle + 360
         else:
-            self.reference_yaw = self.yaw + reference_angle
+            self.reference_yaw = initial_yaw + reference_angle
 
-        # Begin display thread
-        self.measuring_event = Event()
-        display_info_thread = Thread(target = self.display_info)
-        display_info_thread.start()
+        # Activate the sensor
+        self.sensor.activate(self.display_extra_info)
 
         # Begin yaw correction thread
+        self.yaw_correction_event = Event()
         correct_yaw_thread = Thread(target = self.correct_yaw)
         correct_yaw_thread.start()
         
-        print("Initial yaw: %0.6f" % self.yaw)
+        print("Initial yaw: %0.6f" % initial_yaw)
         print("Reference yaw: %0.6f" % self.reference_yaw)
 
         # Keep reading off sensor until target yaw reached
-        error = (360 + self.yaw - self.reference_yaw) if (self.reference_yaw >= 0 and self.yaw < 0) else (self.yaw - self.reference_yaw)
-        while error < -1 or error > 1:
+        while self.compute_yaw_error() < -1 or self.compute_yaw_error() > 1:
             # Rotate
             self.plant.move(self.throttle_L, self.throttle_R)
-
-            # Read off sensors
-            self.accel_x, self.accel_y, self.accel_z = self.sensor.get_acceleration()
-            self.speed += ((self.accel_y)  * self.update_interval)
-            self.distance += (self.speed * self.update_interval)
-            self.roll, self.pitch, self.yaw = self.sensor.get_angles_degrees()
-
-            error = (360 + self.yaw - self.reference_yaw) if (self.reference_yaw >= 0 and self.yaw < 0) else (self.yaw - self.reference_yaw)
 
             time.sleep(self.update_interval)
 
         print("Reference yaw: %0.6f" % self.reference_yaw)
-        print("Final yaw: %0.6f" % self.yaw)
+        print("Final yaw: %0.6f" % self.sensor.get_angles_degrees()[2])
         print("Final error: %0.6f" % error)
-        print("")
-        print("")
 
         self.plant.stop()
         
         # Stop yaw correction thread
-        self.measuring_event.set()
+        self.yaw_correction_event.set()
         correct_yaw_thread.join()
 
-        # Stop display thread
-        display_info_thread.join()
+        # Deactivate sensor
+        self.sensor.deactivate()
+        self.sensor.reset()
+
+        self.reset_throttle()
 
 
 
@@ -335,3 +308,6 @@ while True:
 
     control_system.rotate(target_angle)
     #control_system.move(target_distance)
+
+    print("")
+    print("")
