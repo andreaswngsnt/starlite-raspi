@@ -37,19 +37,27 @@ class Plant:
         self.motor_R = Motor(forward = 23, backward = 24)
 
     def move(self, throttle_L, throttle_R):
-        if throttle_L > 1:
-            self.motor_L.forward(1)
-        elif throttle_L < 0:
-            self.motor_L.backward(-1 * throttle_L)
+        if throttle_L >= 0:
+            if throttle_L > 1:
+                self.motor_L.forward(1)
+            else:
+                self.motor_L.forward(throttle_L)
         else:
-            self.motor_L.forward(throttle_L)
-
-        if throttle_R > 1:
-            self.motor_R.forward(1)
-        elif throttle_R < 0:
-            self.motor_R.backward(-1 * throttle_R)
+            if throttle_L < -1:
+                self.motor_L.backward(1)
+            else:
+                self.motor_L.backward(-1 * throttle_L)
+        
+        if throttle_R >= 0:
+            if throttle_R > 1:
+                self.motor_R.forward(1)
+            else:
+                self.motor_R.forward(throttle_R)
         else:
-            self.motor_R.forward(throttle_R)
+            if throttle_R < -1:
+                self.motor_R.backward(1)
+            else:
+                self.motor_R.backward(-1 * throttle_R)
 
     def stop(self):
         self.motor_L.stop()
@@ -69,6 +77,17 @@ class Sensor:
         self.bno.enable_feature(BNO_REPORT_ACCELEROMETER)
         self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
         self.update_interval = update_interval
+        self.accel_x = 0
+        self.accel_y = 0
+        self.accel_z = 0
+        self.speed = 0
+        self.distance = 0
+        self.roll = 0
+        self.pitch = 0
+        self.yaw = 0
+        self.active_event = None
+
+    def reset_measurements(self):
         self.accel_x = 0
         self.accel_y = 0
         self.accel_z = 0
@@ -100,21 +119,43 @@ class Sensor:
         
         return roll_x * (180 / math.pi), pitch_y * (180 / math.pi), yaw_z * (180 / math.pi) # in degrees
 
+    def display_info(self):
+        while True:
+            print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % (self.accel_x, self.accel_y, self.accel_z))
+            print("Speed: %0.6f m/s" % (self.speed))
+            print("Distance: %0.6f m" % (self.distance))
+            print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % (self.get_angles_degrees()))
+            time.sleep(0.5)
+            
+            if self.active_event.is_set():
+                break
+
     def compute_speed_distance(self):
         while True:
             self.accel_x, self.accel_y, self.accel_z = self.get_acceleration()
             self.speed += ((self.accel_y)  * self.update_interval)
             self.distance += (self.speed * self.update_interval)
             time.sleep(self.update_interval)
+
+            if self.active_event.is_set():
+                break
     
     def get_acceleration(self):
         return self.bno.acceleration
+    def get_speed(self):
+        return self.speed
+    def get_distance(self):
+        return self.distance
     def get_angles_degrees(self):
         return self.euler_from_quaternion(*self.bno.quaternion)
 
 
 class ControlSystem:
     def __init__(self):
+        """
+        PID values that work
+        0.0001, 0, 0.0001
+        """
         self.controller = PIDController(0.0001, 0, 0.0001)
         self.plant = Plant()
         self.sensor = Sensor(1 / 100)
@@ -141,7 +182,7 @@ class ControlSystem:
             print("Distance: %0.6f m" % (self.distance))
             print("Error: %0.6f" % (self.yaw - self.reference_yaw))
             print("L: %0.6f R: %0.6f" % (self.throttle_L, self.throttle_R))
-            #print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % (roll, pitch, yaw))
+            print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % (self.roll, self.pitch, self.yaw))
             time.sleep(0.5)
             
             if self.measuring_event.is_set():
@@ -244,10 +285,13 @@ class ControlSystem:
         # Begin yaw correction thread
         correct_yaw_thread = Thread(target = self.correct_yaw)
         correct_yaw_thread.start()
+        
+        print("Initial yaw: %0.6f" % self.yaw)
+        print("Reference yaw: %0.6f" % self.reference_yaw)
 
         # Keep reading off sensor until target yaw reached
         error = (360 + self.yaw - self.reference_yaw) if (self.reference_yaw >= 0 and self.yaw < 0) else (self.yaw - self.reference_yaw)
-        while error > 1:
+        while error < -1 or error > 1:
             # Rotate
             self.plant.move(self.throttle_L, self.throttle_R)
 
@@ -257,7 +301,15 @@ class ControlSystem:
             self.distance += (self.speed * self.update_interval)
             self.roll, self.pitch, self.yaw = self.sensor.get_angles_degrees()
 
+            error = (360 + self.yaw - self.reference_yaw) if (self.reference_yaw >= 0 and self.yaw < 0) else (self.yaw - self.reference_yaw)
+
             time.sleep(self.update_interval)
+
+        print("Reference yaw: %0.6f" % self.reference_yaw)
+        print("Final yaw: %0.6f" % self.yaw)
+        print("Final error: %0.6f" % error)
+        print("")
+        print("")
 
         self.plant.stop()
         
@@ -282,4 +334,4 @@ while True:
         continue
 
     control_system.rotate(target_angle)
-    control_system.move(target_distance)
+    #control_system.move(target_distance)
