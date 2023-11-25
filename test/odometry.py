@@ -78,6 +78,9 @@ class Sensor:
         self.bno.enable_feature(BNO_REPORT_ACCELEROMETER)
         self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
         self.update_interval = update_interval
+        self.accel_x_offset = 0
+        self.accel_y_offset = 0
+        self.accel_z_offset = 0
         self.speed = 0
         self.distance = 0
         self.active_event = None
@@ -86,6 +89,10 @@ class Sensor:
 
     def activate(self, display_callback = None):
         self.active_event = Event()
+
+        # Calibrate accelerometer
+        #self.accel_x_offset = self.bno.acceleration[0]
+        #self.accel_y_offset = self.bno.acceleration[1]
 
         # Create & start compute thread
         self.compute_speed_distance_thread = Thread(target = self.compute_speed_distance)
@@ -104,6 +111,9 @@ class Sensor:
         self.compute_speed_distance_thread.join()
 
     def reset(self):
+        self.accel_x_offset = 0
+        self.accel_y_offset = 0
+        self.accel_z_offset = 0
         self.speed = 0
         self.distance = 0
 
@@ -139,6 +149,8 @@ class Sensor:
             if callback is not None:
                 callback(self.get_acceleration(), self.get_speed(), self.get_distance(), self.get_angles_degrees())
 
+            print("")
+
             time.sleep(0.5)
             
             if self.active_event.is_set():
@@ -154,11 +166,13 @@ class Sensor:
                 break
     
     def get_acceleration(self):
-        return self.bno.acceleration
+        return self.bno.acceleration[0] - self.accel_x_offset, self.bno.acceleration[1] - self.accel_y_offset, self.bno.acceleration[2] - self.accel_z_offset
     def get_speed(self):
         return self.speed
     def get_distance(self):
         return self.distance
+    def get_quaternion(self):
+        return self.bno.quaternion
     def get_angles_degrees(self):
         return self.euler_from_quaternion(*self.bno.quaternion)
 
@@ -270,8 +284,13 @@ class ControlSystem:
         correct_yaw_thread = Thread(target = self.correct_yaw)
         correct_yaw_thread.start()
         
-        # Keep reading off sensor until target yaw reached
-        while self.compute_yaw_error() < -1 or self.compute_yaw_error() > 1:
+        # Keep reading off sensor until target yaw reached & is in steady state
+        while True:
+            if self.compute_yaw_error() > -1 and self.compute_yaw_error() < 1:
+                time.sleep(self.update_interval * 10)
+                if self.compute_yaw_error() > -1 and self.compute_yaw_error() < 1:
+                    break
+
             # Rotate
             self.plant.move(self.throttle_L, self.throttle_R)
 
@@ -298,8 +317,8 @@ class ControlSystem:
 control_system = ControlSystem()
 
 while True:
-    target_distance = int(input("Enter distance to travel: "))
-    if target_distance <= 0:
+    target_distance = float(input("Enter distance to travel: "))
+    if target_distance < 0:
         continue
 
     target_angle = float(input("Enter angle to face: "))
