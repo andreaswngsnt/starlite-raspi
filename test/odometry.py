@@ -188,15 +188,28 @@ class ControlSystem:
         self.plant = Plant()
         self.sensor = Sensor(1 / 100)
         self.update_interval = 1 / 100
+        
         self.reference_yaw = 0
         self.throttle_L = 0
         self.throttle_R = 0
-        self.measuring_event = None
+
+        # "Global" coordinates
+        self.x = 0
+        self.y = 0
+        self.d_prev = 0
+        self.zero_yaw = 0
+        self.theta = 0
+        self.theta_prev = 0
+
+        self.active_event = None
+        self.localization_thread = None
 
     def display_extra_info(self, acceleration, speed, distance, degrees):
-        print("Error: %0.6f" % self.compute_yaw_error())
+        print("Yaw Error: %0.6f" % self.compute_yaw_error())
         print("L: %0.6f R: %0.6f" % (self.throttle_L, self.throttle_R))
         print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % degrees)
+        print("Global Location: (%0.6f, %0.6f)" % (self.x, self.y))
+        print("Global Yaw: %0.6f" % self.theta)
 
     def reset_throttle(self):
         self.throttle_L = 0
@@ -224,8 +237,27 @@ class ControlSystem:
 
             time.sleep(self.update_interval)
 
-            if self.yaw_correction_event.is_set():
+            if self.active_event.is_set():
                 break
+
+    def localization(self):
+        while True:
+            # Update global thetas
+            self.theta_prev = self.theta
+            if self.sensor.get_angles_degrees()[2] - self.zero_yaw <= -180:
+                self.theta = self.sensor.get_angles_degrees()[2] - self.zero_yaw + 360
+            elif self.sensor.get_angles_degrees()[2] - self.zero_yaw  > 180:
+                self.theta = self.sensor.get_angles_degrees()[2] - self.zero_yaw - 360
+            else:
+                self.theta = self.sensor.get_angles_degrees()[2] - self.zero_yaw
+
+            # Update x & y coordinates
+            d_delta = self.sensor.get_distance() - self.d_prev
+            self.x += d_delta * math.cos((self.theta  * (math.pi / 180) - self.theta_prev * (math.pi / 180) / 2))
+            self.y += d_delta * math.sin((self.theta  * (math.pi / 180) - self.theta_prev * (math.pi / 180) / 2))
+            self.d_prev = self.sensor.get_distance()
+
+            time.sleep(self.update_interval)
 
     def move(self, reference_distance):
         self.throttle_L = 0.8
@@ -235,10 +267,10 @@ class ControlSystem:
         self.reference_yaw = self.sensor.get_angles_degrees()[2]
         
         # Activate sensor
-        self.sensor.activate()
+        self.sensor.activate(self.display_extra_info)
 
         # Begin yaw correction thread
-        self.yaw_correction_event = Event()
+        self.active_event = Event()
         correct_yaw_thread = Thread(target = self.correct_yaw)
         correct_yaw_thread.start()
 
@@ -252,7 +284,7 @@ class ControlSystem:
         self.plant.stop()
 
         # Stop yaw correction thread
-        self.yaw_correction_event.set()
+        self.active_event.set()
         correct_yaw_thread.join()
 
         # Deactivate sensor
@@ -261,8 +293,18 @@ class ControlSystem:
 
         self.reset_throttle()
 
+    def activate(self):
+        # Wait for the IMU to initialize
+        time.sleep(0.5)
+        self.zero_yaw = self.sensor.get_angles_degrees()[2]
+        self.localization_thread = Thread(target = self.localization)
+        self.localization_thread.start()
+
     def rotate(self, reference_angle):
         self.reset_throttle()
+
+        # Activate the sensor
+        self.sensor.activate(self.display_extra_info)
 
         # Get initial readings & set reference yaw
         initial_yaw = self.sensor.get_angles_degrees()[2]
@@ -276,16 +318,13 @@ class ControlSystem:
         print("Initial yaw: %0.6f" % initial_yaw)
         print("Reference yaw: %0.6f" % self.reference_yaw)
 
-        # Activate the sensor
-        self.sensor.activate(self.display_extra_info)
-
         # Begin yaw correction thread
-        self.yaw_correction_event = Event()
+        self.active_event = Event()
         correct_yaw_thread = Thread(target = self.correct_yaw)
         correct_yaw_thread.start()
         
-        # Keep reading off sensor until target yaw reached & is in steady state
         while True:
+            # If target yaw reached & is in steady state, stop rotating
             if self.compute_yaw_error() > -1 and self.compute_yaw_error() < 1:
                 time.sleep(self.update_interval * 10)
                 if self.compute_yaw_error() > -1 and self.compute_yaw_error() < 1:
@@ -299,7 +338,7 @@ class ControlSystem:
         self.plant.stop()
         
         # Stop yaw correction thread
-        self.yaw_correction_event.set()
+        self.active_event.set()
         correct_yaw_thread.join()
 
         # Deactivate sensor
@@ -312,9 +351,13 @@ class ControlSystem:
 
         self.reset_throttle()
 
+    def __del__(self):
+        self.localization_thread.join()
+
 
 
 control_system = ControlSystem()
+control_system.activate()
 
 while True:
     target_distance = float(input("Enter distance to travel: "))
