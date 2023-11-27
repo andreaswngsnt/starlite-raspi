@@ -240,6 +240,7 @@ class ControlSystem:
             if self.active_event.is_set():
                 break
 
+    # TODO: Fix this shit
     def localization(self):
         while True:
             # Update global thetas
@@ -253,8 +254,9 @@ class ControlSystem:
 
             # Update x & y coordinates
             d_delta = self.sensor.get_distance() - self.d_prev
-            self.x += d_delta * math.cos((self.theta  * (math.pi / 180) - self.theta_prev * (math.pi / 180) / 2))
-            self.y += d_delta * math.sin((self.theta  * (math.pi / 180) - self.theta_prev * (math.pi / 180) / 2))
+            d_theta = self.theta - self.theta_prev
+            self.x += d_delta * math.cos((self.theta  * (math.pi / 180) + d_theta * (math.pi / 180) / 2))
+            self.y += d_delta * math.sin((self.theta  * (math.pi / 180) + d_theta * (math.pi / 180) / 2))
             self.d_prev = self.sensor.get_distance()
 
             time.sleep(self.update_interval)
@@ -287,9 +289,10 @@ class ControlSystem:
         self.active_event.set()
         correct_yaw_thread.join()
 
-        # Deactivate sensor
+        # Deactivate sensor & reset readings
         self.sensor.deactivate()
         self.sensor.reset()
+        self.d_prev = 0
 
         self.reset_throttle()
 
@@ -341,9 +344,10 @@ class ControlSystem:
         self.active_event.set()
         correct_yaw_thread.join()
 
-        # Deactivate sensor
+        # Deactivate sensor & reset readings
         self.sensor.deactivate()
         self.sensor.reset()
+        self.d_prev = 0
 
         print("Reference yaw: %0.6f" % self.reference_yaw)
         print("Final yaw: %0.6f" % self.sensor.get_angles_degrees()[2])
