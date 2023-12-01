@@ -158,7 +158,7 @@ class Sensor:
 
     def compute_speed_distance(self):
         while True:
-            self.speed += (self.get_acceleration()[1]  * self.update_interval)
+            self.speed += (self.get_acceleration()[0]  * self.update_interval)
             self.distance += (self.speed * self.update_interval)
             time.sleep(self.update_interval)
 
