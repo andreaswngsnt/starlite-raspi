@@ -3,7 +3,7 @@ import time
 from threading import (Event, Thread)
 from gpiozero import Motor
 
-import IMU
+from imu import IMU
 
 # PID Controller: Takes in error and computes the required throttles
 class PIDController:

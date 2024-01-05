@@ -1,4 +1,4 @@
-import IMU
+from imu import IMU
 
-imu = IMU(1/100)
-imu.activate()
+imu1 = IMU(1/100)
+imu1.activate()

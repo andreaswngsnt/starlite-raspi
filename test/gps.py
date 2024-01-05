@@ -6,17 +6,20 @@ import RPi.GPIO as GPIO
 import serial
 import time
 
+import traceback
+import sys
+
 class GPS:
 	def __init__(self, debug_mode = False):
-		self.ser = serial.Serial("/dev/ttyS0", 115200)
+		self.ser = serial.Serial('/dev/ttyS0', 115200)
 		self.ser.flushInput()
 
 		self.POWER_KEY = 6
 		self.debug_mode = debug_mode
-		self.rec_buff = ""
+		self.rec_buff = ''
 
-		self.latitude = ""
-		self.longitude = ""
+		self.latitude = 0
+		self.longitude = 0
 
 		self.activate()
 	
@@ -30,7 +33,8 @@ class GPS:
 			self.power_on()
 			self.fetch_gps_position()
 			self.power_down()
-		except:
+		except Exception:
+			print(traceback.format_exc())
 			if self.ser != None:
 				self.ser.close()
 			self.power_down()
@@ -68,7 +72,7 @@ class GPS:
 			answer = self.send_at('AT+CGPSINFO', '+CGPSINFO: ', 1)
 			if 1 == answer:
 				answer = 0
-				if ',,,,,,' in self.rec_buff:
+				if ',,,,,,' in self.rec_buff.decode():
 
 					if self.debug_mode:
 						print('GPS is not ready')
@@ -92,7 +96,7 @@ class GPS:
 
 		if self.ser.inWaiting():
 			time.sleep(0.01)
-			self.rec_buff = ser.read(ser.inWaiting())
+			self.rec_buff = self.ser.read(self.ser.inWaiting())
 		
 		if self.rec_buff != '':
 			if back not in self.rec_buff.decode():
@@ -103,6 +107,9 @@ class GPS:
 			else:
 				if self.debug_mode:
 					print(self.rec_buff.decode())
+				
+				self.decode_lat_long()
+				print("Latitude: %f, Longitude: %f" %(self.latitude, self.longitude))
 
 				return 1
 		else:
@@ -111,29 +118,31 @@ class GPS:
 			return 0
 
 	def decode_lat_long(self):
-		lat = ""
-		long = ""
+		lat = ''
+		long = ''
+
+		decoded_string = self.rec_buff.decode()
 
 		# Get the latitude string
-		i = 4
-		while self.rec_buff[i] != ',':
-			lat += self.rec_buff[i]
+		i = 12
+		while decoded_string[i] != ',':
+			lat = lat + str(decoded_string[i])
 			i += 1
 		i += 1
 
 		# If the latitude is S, make the string negative
-		if self.rec_buff[i] == 'S':
+		if decoded_string[i] == 'S':
 			lat = '-' + lat
 		i += 2
 
 		# Get the longitude string
-		while self.rec_buff[i] != ',':
-			long += self.rec_buff[i]
+		while decoded_string[i] != ',':
+			long = long + str(decoded_string[i])
 			i += 1
 		i += 1
 
 		# If the longitude is S, make the string negative
-		if self.rec_buff[i] == 'W':
+		if decoded_string[i] == 'W':
 			long = '-' + long
 
 		# Normalize the decimal system
@@ -158,8 +167,8 @@ class GPS:
 		moved_str = left_str[len(left_str) - 2 :]
 		long = left_str[: len(left_str) - 2] + '.' + moved_str + right_str
 
-		self.latitude = lat
-		self.longitude = long
+		self.latitude = float(lat)
+		self.longitude = float(long)
 
 
 	def power_down(self):
@@ -173,7 +182,7 @@ class GPS:
 			print('Good bye')
 
 
-	# Getters: Return "" if not ready or if there's no reception
+	# Getters: Return '' if not ready or if there's no reception
 	def get_latitude(self):
 		return self.latitude
 	def get_longitude(self):
