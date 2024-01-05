@@ -11,13 +11,11 @@ from adafruit_bno08x import (
 )
 from adafruit_bno08x.i2c import BNO08X_I2C
 
-# Sensor: Read & Compute off the sensor readings
-class Sensor:
+# IMU: Read & compute off the IMU sensor readings
+class IMU:
     def __init__(self, update_interval):
         self.bno = BNO08X_I2C(busio.I2C(board.SCL, board.SDA, frequency = 400000))
         self.bno.enable_feature(BNO_REPORT_ACCELEROMETER)
-        self.bno.enable_feature(BNO_REPORT_GYROSCOPE)
-        self.bno.enable_feature(BNO_REPORT_MAGNETOMETER)
         self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
         self.update_interval = update_interval
         self.accel_x_offset = 0
@@ -86,9 +84,6 @@ class Sensor:
             print("Acceleration: (%0.6f, %0.6f, %0.6f) m/s^2" % self.get_acceleration())
             print("Speed: %0.6f m/s" % self.speed)
             print("Distance: %0.6f m" % self.distance)
-            print("Gyroscope: (%0.6f, %0.6f, %0.6f) m/s^2" % self.bno.gyro)
-            print("Magnetometer: (%0.6f, %0.6f, %0.6f) m/s^2" % self.bno.magnetic)
-            print("Quaternion: (%0.6f, %0.6f, %0.6f, %0.6f) m/s^2" % self.bno.quaternion)
             print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % self.get_angles_degrees())
 
             if callback is not None:
@@ -103,7 +98,9 @@ class Sensor:
 
     def compute_speed_distance(self):
         while True:
-            self.speed += (self.get_acceleration()[1]  * self.update_interval)
+            # TODO: Use fixed speed temporarily
+            # self.speed += (self.get_acceleration()[0]  * self.update_interval)
+            self.speed = 0.287
             self.distance += (self.speed * self.update_interval)
             time.sleep(self.update_interval)
 
@@ -120,7 +117,3 @@ class Sensor:
         return self.bno.quaternion
     def get_angles_degrees(self):
         return self.euler_from_quaternion(*self.bno.quaternion)
-
-
-sensor = Sensor(1/100)
-sensor.activate()
