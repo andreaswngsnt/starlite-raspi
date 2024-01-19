@@ -88,6 +88,8 @@ class ControlSystem:
         self.theta_prev = 0
 
         self.active_event = None
+        self.actuator_thread = None
+        self.correct_yaw_thread = None
         self.localization_thread = None
 
     def display_extra_info(self, acceleration, speed, distance, degrees):
@@ -113,6 +115,18 @@ class ControlSystem:
             return self.reference_yaw - self.sensor.get_angles_degrees()[2] - 360
         else:
             return self.reference_yaw - self.sensor.get_angles_degrees()[2]
+        
+    def update_actuator(self):
+        while True:
+            # Move
+            self.actuator.move(self.throttle_L, self.throttle_R)
+
+            time.sleep(self.update_interval)
+
+            if self.active_event.is_set():
+                break
+
+        self.actuator.stop()        
 
     def correct_yaw(self):
         while True:
@@ -147,6 +161,44 @@ class ControlSystem:
 
             time.sleep(self.update_interval)
 
+    # Move the robot forward indefinitely, will try to move as straight as possible.
+    def move_forward(self):
+        self.throttle_L = 0.8
+        self.throttle_R = 0.8
+
+        # Get initial readings & offset
+        self.reference_yaw = self.sensor.get_angles_degrees()[2]
+        
+        # Activate sensor
+        self.sensor.activate(self.display_extra_info)
+
+        self.active_event = Event()
+
+        # Begin yaw correction thread
+        self.correct_yaw_thread = Thread(target = self.correct_yaw)
+        self.correct_yaw_thread.start()
+
+        # Begin actuator thread
+        self.actuator_thread = Thread(target = self.update_actuator)
+
+    def stop(self):
+        self.active_event.set()
+
+        # Stop yaw correction thread
+        self.correct_yaw_thread.join()
+
+        # Stop actuator thread
+        self.actuator_thread.join()
+
+        # Deactivate sensor & reset readings
+        self.sensor.deactivate()
+        self.sensor.reset()
+        self.d_prev = 0
+
+        self.reset_throttle()
+
+
+    # Move the robot forward given a set distance, will try to move as straight as possible.
     def move(self, reference_distance):
         self.throttle_L = 0.8
         self.throttle_R = 0.8
@@ -159,8 +211,8 @@ class ControlSystem:
 
         # Begin yaw correction thread
         self.active_event = Event()
-        correct_yaw_thread = Thread(target = self.correct_yaw)
-        correct_yaw_thread.start()
+        self.correct_yaw_thread = Thread(target = self.correct_yaw)
+        self.correct_yaw_thread.start()
 
         # Keep calculating distance until target distance reached
         while self.sensor.get_distance() < reference_distance:
@@ -173,7 +225,7 @@ class ControlSystem:
 
         # Stop yaw correction thread
         self.active_event.set()
-        correct_yaw_thread.join()
+        self.correct_yaw_thread.join()
 
         # Deactivate sensor & reset readings
         self.sensor.deactivate()
@@ -209,8 +261,8 @@ class ControlSystem:
 
         # Begin yaw correction thread
         self.active_event = Event()
-        correct_yaw_thread = Thread(target = self.correct_yaw)
-        correct_yaw_thread.start()
+        self.correct_yaw_thread = Thread(target = self.correct_yaw)
+        self.correct_yaw_thread.start()
         
         while True:
             # If target yaw reached & is in steady state, stop rotating
@@ -228,7 +280,7 @@ class ControlSystem:
         
         # Stop yaw correction thread
         self.active_event.set()
-        correct_yaw_thread.join()
+        self.correct_yaw_thread.join()
 
         # Deactivate sensor & reset readings
         self.sensor.deactivate()
@@ -243,24 +295,3 @@ class ControlSystem:
 
     def __del__(self):
         self.localization_thread.join()
-
-
-
-control_system = ControlSystem()
-control_system.activate()
-
-while True:
-    target_distance = float(input("Enter distance to travel: "))
-    if target_distance < 0:
-        continue
-
-    target_angle = float(input("Enter angle to face: "))
-    if target_angle > 180 or target_angle <= -180:
-        continue
-
-    control_system.rotate(target_angle)
-    print("")
-    print("")
-    control_system.move(target_distance)
-    print("")
-    print("")
