@@ -39,8 +39,12 @@ r = Robot((27, 17), (23, 24))
 e1 = QuadratureEncoder(13, 19)
 # e2 = QuadratureEncoder(18, 19)
 
-r.value = (1, 1)
+r.value = (0.1, 0.1)
 
-while True:
+# The encoder has 990 * 2 counts / rotation
+# Will rotate 5 times
+while e1.a_value <= 990 * 2 * 5:
     print("e1, a: {} b: {}".format(e1.a_value, e1.b_value))
     sleep(1)
+
+print("e1, a: {} b: {}".format(e1.a_value, e1.b_value))
