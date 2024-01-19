@@ -9,13 +9,13 @@ class QuadratureEncoder(object):
         self._a_value = 0
         self._b_value = 0
 
-        encoder_a = DigitalInputDevice(pin_a)
-        encoder_a.when_activated = self._increment_a
-        encoder_a.when_deactivated = self._increment_a
+        self.encoder_a = DigitalInputDevice(pin_a)
+        self.encoder_a.when_activated = self._increment_a
+        self.encoder_a.when_deactivated = self._increment_a
 
-        encoder_b = DigitalInputDevice(pin_b)
-        encoder_b.when_activated = self._increment_b
-        encoder_b.when_deactivated = self._increment_b
+        self.encoder_b = DigitalInputDevice(pin_b)
+        self.encoder_b.when_activated = self._increment_b
+        self.encoder_b.when_deactivated = self._increment_b
         
     def reset(self):
         self._a_value = 0
@@ -30,6 +30,7 @@ class QuadratureEncoder(object):
     @property
     def a_value(self):
         return self._a_value
+    
     @property
     def b_value(self):
         return self._b_value
