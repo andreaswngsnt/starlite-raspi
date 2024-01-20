@@ -156,7 +156,7 @@ class ControlSystem:
 
             time.sleep(self.update_interval)
 
-            if self.correct_yaw_event.is_set():
+            if self._correct_yaw_event.is_set():
                 break
 
     # TODO: Fix this shit
@@ -207,7 +207,7 @@ class ControlSystem:
         self.throttle_L = 0
         self.throttle_R = 0
 
-        if _correct_yaw_event is not None:
+        if self._correct_yaw_event is not None:
             self._correct_yaw_event.set()
             self._correct_yaw_thread.join()                     
 
