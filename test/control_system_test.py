@@ -1,7 +1,6 @@
 from control_system import ControlSystem
 
 control_system = ControlSystem()
-control_system.activate()
 
 while True:
     target_distance = float(input("Enter distance to travel: "))
