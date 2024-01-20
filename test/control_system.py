@@ -65,14 +65,14 @@ class Actuator:
 
 
 class ControlSystem:
-    def __init__(self):
+    def __init__(self, debug_mode = False):
         """
         PID values that work
         0.0001, 0, 0.0001
         """
         self.controller = PIDController(0.0001, 0, 0.0001)
         self.actuator = Actuator()
-        self.sensor = IMU(1 / 100)
+        self.sensor = IMU(1 / 100, debug_mode)
         self.update_interval = 1 / 100
 
         # Wait for the IMU to initialize
@@ -241,8 +241,9 @@ class ControlSystem:
         initial_yaw = self.sensor.get_angles_degrees()[2]
         self.reference_yaw = self._compute_target_yaw(initial_yaw, reference_angle)
 
-        print("Initial yaw: %0.6f" % initial_yaw)
-        print("Reference yaw: %0.6f" % self.reference_yaw)
+        if self.debug_mode:
+            print("Initial yaw: %0.6f" % initial_yaw)
+            print("Reference yaw: %0.6f" % self.reference_yaw)
 
         self._correct_yaw_event = Event()
         self._correct_yaw_thread.start()
@@ -258,9 +259,10 @@ class ControlSystem:
 
         self.stop()
 
-        print("Reference yaw: %0.6f" % self.reference_yaw)
-        print("Final yaw: %0.6f" % self.sensor.get_angles_degrees()[2])
-        print("Final error: %0.6f" % self.compute_yaw_error())
+        if self.debug_mode:
+            print("Reference yaw: %0.6f" % self.reference_yaw)
+            print("Final yaw: %0.6f" % self.sensor.get_angles_degrees()[2])
+            print("Final error: %0.6f" % self.compute_yaw_error())
 
     # Adjusts the yaw of the robot when the robot is in motion.
     def adjust_reference_yaw(self, adjustment):

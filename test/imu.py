@@ -13,14 +13,13 @@ from adafruit_bno08x.i2c import BNO08X_I2C
 
 # IMU: Read & compute off the IMU sensor readings
 class IMU:
-    def __init__(self, update_interval):
+    def __init__(self, update_interval = 1/100, debug_mode = False):
         self.bno = BNO08X_I2C(busio.I2C(board.SCL, board.SDA, frequency = 400000))
         self.bno.enable_feature(BNO_REPORT_ACCELEROMETER)
         self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
         self.update_interval = update_interval
-        self.accel_x_offset = 0
-        self.accel_y_offset = 0
-        self.accel_z_offset = 0
+        self.debug_mode = debug_mode
+
         self.speed = 0
         self.distance = 0
         self.active_event = None
@@ -30,30 +29,26 @@ class IMU:
     def activate(self, display_callback = None):
         self.active_event = Event()
 
-        # Calibrate accelerometer
-        #self.accel_x_offset = self.bno.acceleration[0]
-        #self.accel_y_offset = self.bno.acceleration[1]
-
         # Create & start compute thread
         self.compute_speed_distance_thread = Thread(target = self.compute_speed_distance)
         self.compute_speed_distance_thread.start()
         
         # Create & start display thread
-        if display_callback is not None:
-            self.display_info_thread = Thread(target = self.display_info, args = [display_callback])
-        else:
-            self.display_info_thread = Thread(target = self.display_info)
-        self.display_info_thread.start()
+        if self.debug_mode:
+            if display_callback is not None:
+                self.display_info_thread = Thread(target = self.display_info, args = [display_callback])
+            else:
+                self.display_info_thread = Thread(target = self.display_info)
+            self.display_info_thread.start()
 
     def deactivate(self):
         self.active_event.set()
-        self.display_info_thread.join()
         self.compute_speed_distance_thread.join()
 
+        if self.debug_mode:
+            self.display_info_thread.join()
+
     def reset(self):
-        self.accel_x_offset = 0
-        self.accel_y_offset = 0
-        self.accel_z_offset = 0
         self.speed = 0
         self.distance = 0
 
@@ -108,7 +103,7 @@ class IMU:
                 break
     
     def get_acceleration(self):
-        return self.bno.acceleration[0] - self.accel_x_offset, self.bno.acceleration[1] - self.accel_y_offset, self.bno.acceleration[2] - self.accel_z_offset
+        return self.bno.acceleration
     def get_speed(self):
         return self.speed
     def get_distance(self):

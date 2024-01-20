@@ -1,6 +1,6 @@
 from control_system import ControlSystem
 
-control_system = ControlSystem()
+control_system = ControlSystem(False)
 
 # Intro message
 print("Keyboard Controls:")
