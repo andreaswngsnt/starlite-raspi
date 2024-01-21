@@ -183,6 +183,10 @@ class ControlSystem:
 
     # Move the robot forward indefinitely, will try to move as straight as possible.
     def move_forward(self):
+        if self._correct_yaw_event is not None:
+            self._correct_yaw_event.set()
+            self._correct_yaw_thread.join()
+
         self.throttle_L = 0.8
         self.throttle_R = 0.8
 
@@ -194,6 +198,10 @@ class ControlSystem:
 
     # Move the robot backward indefinitely, will try to move as straight as possible.
     def move_backward(self):
+        if self._correct_yaw_event is not None:
+            self._correct_yaw_event.set()
+            self._correct_yaw_thread.join()
+
         self.throttle_L = -0.8
         self.throttle_R = -0.8
 
@@ -204,12 +212,12 @@ class ControlSystem:
 
 
     def stop(self):
-        self.throttle_L = 0
-        self.throttle_R = 0
-
         if self._correct_yaw_event is not None:
             self._correct_yaw_event.set()
-            self._correct_yaw_thread.join()                     
+            self._correct_yaw_thread.join()
+
+        self.throttle_L = 0
+        self.throttle_R = 0     
 
 
     # Move the robot forward given a set distance, will try to move as straight as possible.
@@ -269,9 +277,17 @@ class ControlSystem:
         self.reference_yaw = self._compute_target_yaw(self.sensor.get_angles_degrees()[2], adjustment)
 
     def rotate_left(self):
+        if self._correct_yaw_event is not None:
+            self._correct_yaw_event.set()
+            self._correct_yaw_thread.join()
+
         self.throttle_L = -0.8
         self.throttle_R = 0.8
 
     def rotate_right(self):
+        if self._correct_yaw_event is not None:
+            self._correct_yaw_event.set()
+            self._correct_yaw_thread.join()
+
         self.throttle_L = 0.8
         self.throttle_R = -0.8
