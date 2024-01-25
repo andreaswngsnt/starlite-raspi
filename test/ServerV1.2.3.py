@@ -111,9 +111,6 @@ def start_server():
             # Get the size of the data and send it
             message_size = struct.pack("L", len(data))
             client_socket.sendall(message_size + data)
-
-            # Display the resulting frame
-            cv2.imshow('Server Feed', frame)
             
             # Break the loop if 'q' is pressed
             if cv2.waitKey(1) & 0xFF == ord('q'):
