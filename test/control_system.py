@@ -74,6 +74,7 @@ class ControlSystem:
         self.actuator = Actuator()
         self.sensor = IMU(1 / 100, debug_mode)
         self.update_interval = 1 / 100
+        self.debug_mode = debug_mode
 
         # Wait for the IMU to initialize
         time.sleep(0.5)
@@ -101,16 +102,17 @@ class ControlSystem:
         self._localization_thread.start()
 
     def __del__(self):
-        if not self._correct_yaw_event.is_set():
+        if self._correct_yaw_event is not None and not self._correct_yaw_event.is_set():
             self._correct_yaw_event.set()
             self._correct_yaw_thread.join()
+            self._correct_yaw_event = None
 
         self._active_event.set()
         self._actuator_thread.join()
         self._localization_thread.join()
     
     def display_extra_info(self, acceleration, speed, distance, degrees):
-        print("Yaw Error: %0.6f" % self.compute_yaw_error())
+        print("Yaw Error: %0.6f" % self._compute_yaw_error())
         print("L: %0.6f R: %0.6f" % (self.throttle_L, self.throttle_R))
         print("Rotation: (%0.6f, %0.6f, %0.6f) degrees" % degrees)
         print("Global Location: (%0.6f, %0.6f)" % (self.x, self.y))
@@ -187,45 +189,48 @@ class ControlSystem:
 
     # Move the robot forward indefinitely, will try to move as straight as possible.
     def move_forward(self):
-        if not self._correct_yaw_event.is_set():
-            self._correct_yaw_event.set()
-            self._correct_yaw_thread.join()
+        self.stop()
 
         self.throttle_L = 0.8
         self.throttle_R = 0.8
 
         self.reference_yaw = self.sensor.get_angles_degrees()[2]
 
-        self._correct_yaw_event = Event()
-        self._correct_yaw_thread.start()
+        if self._correct_yaw_event is None or self._correct_yaw_event.is_set():
+            self._correct_yaw_event = Event()
+            self._correct_yaw_thread = Thread(target = self._correct_yaw)
+            self._correct_yaw_thread.start()
 
 
     # Move the robot backward indefinitely, will try to move as straight as possible.
     def move_backward(self):
-        if not self._correct_yaw_event.is_set():
-            self._correct_yaw_event.set()
-            self._correct_yaw_thread.join()
+        self.stop()
 
         self.throttle_L = -0.8
         self.throttle_R = -0.8
 
         self.reference_yaw = self.sensor.get_angles_degrees()[2]
 
-        self._correct_yaw_event = Event()
-        self._correct_yaw_thread.start()
+        if self._correct_yaw_event is None or self._correct_yaw_event.is_set():
+            self._correct_yaw_event = Event()
+            self._correct_yaw_thread = Thread(target = self._correct_yaw)
+            self._correct_yaw_thread.start()
 
 
     def stop(self):
-        if not self._correct_yaw_event.is_set():
+        if self._correct_yaw_event is not None and not self._correct_yaw_event.is_set():
             self._correct_yaw_event.set()
             self._correct_yaw_thread.join()
+            self._correct_yaw_event = None
 
         self.throttle_L = 0
-        self.throttle_R = 0     
+        self.throttle_R = 0
 
 
     # Move the robot forward given a set distance, will try to move as straight as possible.
     def move(self, reference_distance):
+        self.stop()
+
         # Activate sensor
         self.sensor.activate(self.display_extra_info)
 
@@ -257,14 +262,16 @@ class ControlSystem:
             print("Initial yaw: %0.6f" % initial_yaw)
             print("Reference yaw: %0.6f" % self.reference_yaw)
 
-        self._correct_yaw_event = Event()
-        self._correct_yaw_thread.start()
+        if self._correct_yaw_event is None or self._correct_yaw_event.is_set():
+            self._correct_yaw_event = Event()
+            self._correct_yaw_thread = Thread(target = self._correct_yaw)
+            self._correct_yaw_thread.start()
         
         while True:
             # If target yaw reached & is in steady state, stop rotating
-            if abs(self.compute_yaw_error()) < 1:
+            if abs(self._compute_yaw_error()) < 1:
                 time.sleep(self.update_interval * 10)
-                if abs(self.compute_yaw_error()) < 1:
+                if abs(self._compute_yaw_error()) < 1:
                     break
 
             time.sleep(self.update_interval)
@@ -274,24 +281,18 @@ class ControlSystem:
         if self.debug_mode:
             print("Reference yaw: %0.6f" % self.reference_yaw)
             print("Final yaw: %0.6f" % self.sensor.get_angles_degrees()[2])
-            print("Final error: %0.6f" % self.compute_yaw_error())
+            print("Final error: %0.6f" % self._compute_yaw_error())
 
     # Adjusts the yaw of the robot when the robot is in motion.
     def adjust_reference_yaw(self, adjustment):
         self.reference_yaw = self._compute_target_yaw(self.sensor.get_angles_degrees()[2], adjustment)
 
     def rotate_left(self):
-        if not self._correct_yaw_event.is_set():
-            self._correct_yaw_event.set()
-            self._correct_yaw_thread.join()
-
+        self.stop()
         self.throttle_L = -0.8
         self.throttle_R = 0.8
 
     def rotate_right(self):
-        if not self._correct_yaw_event.is_set():
-            self._correct_yaw_event.set()
-            self._correct_yaw_thread.join()
-
+        self.stop()
         self.throttle_L = 0.8
         self.throttle_R = -0.8

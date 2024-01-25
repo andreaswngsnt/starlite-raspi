@@ -1,4 +1,5 @@
 from control_system import ControlSystem
+from time import sleep
 
 control_system = ControlSystem(False)
 

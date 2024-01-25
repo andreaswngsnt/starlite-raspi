@@ -1,4 +1,4 @@
-from gpiozero import Robot, DigitalInputDevice
+from gpiozero import Robot, DigitalInputDevice, RotaryEncoder
 from time import sleep
 
 class QuadratureEncoder(object):
@@ -36,8 +36,9 @@ class QuadratureEncoder(object):
         return self._b_value
 
 r = Robot((27, 17), (23, 24))
+
 e1 = QuadratureEncoder(13, 19)
-# e2 = QuadratureEncoder(18, 19)
+# e1 = RotaryEncoder(13, 19, wrap = True, max_steps = 180)
 
 r.value = (0.1, 0.1)
 
@@ -48,3 +49,7 @@ while e1.a_value <= 990 * 2 * 5:
     sleep(1)
 
 print("e1, a: {} b: {}".format(e1.a_value, e1.b_value))
+
+# while e1.value * 180 < 90:
+#     print("e1, {}, {}".format(e1.value, e1.value * 180))
+#     sleep(0.5)
