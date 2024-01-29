@@ -152,7 +152,7 @@ def handle_camera(client_socket):
                 # ~ print(type(msg))
                 frame = msg.getCvFrame()
                 # Convert frame to bytes
-                _, img_encoded = cv2.imencode('.jpg', frame_data)
+                _, img_encoded = cv2.imencode('.jpg', frame)
                 frame_bytes = img_encoded.tobytes()
 
                 # Send the frame to the client
