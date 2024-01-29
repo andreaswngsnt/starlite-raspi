@@ -151,13 +151,15 @@ def handle_camera(client_socket):
             for name, msg in msgGrp:
                 # ~ print(type(msg))
                 frame = msg.getCvFrame()
-                data = pickle.dumps(frame)
-                
-                #Getting the size of the data and sending it:
-                message_size = struct.pack("L", len(data))
-                client_socket.sendall(message_size + data)
+                # Convert frame to bytes
+                _, img_encoded = cv2.imencode('.jpg', frame_data)
+                frame_bytes = img_encoded.tobytes()
+
+                # Send the frame to the client
+                client_socket.send(frame_bytes)
 
                 cv2.imshow(name, frame)
+                
             if cv2.waitKey(1) == ord("q"):
                 break
 
