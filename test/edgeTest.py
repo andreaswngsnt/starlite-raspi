@@ -34,7 +34,7 @@ xinEdgeCfg.setStreamName(edgeCfgStr)
 
 # Properties
 camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
-camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_400_P) ## 1080 originally
+camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P) ## 1080 originally
 
 # monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
 # monoLeft.setCamera("left")

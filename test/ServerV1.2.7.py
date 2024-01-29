@@ -16,12 +16,38 @@ import keyboard
 import cv2
 import pickle
 import struct
+import depthai as dai
+import numpy as np
+from datetime import timedelta
 
 ################################################################################
 #Source Code:
 
+#Camera setup:
+pipeline = dai.Pipeline()
+
+# Set color pipeline
+color = pipeline.create(dai.node.ColorCamera)
+sync = pipeline.create(dai.node.Sync)
+
+# Group Output
+xoutGrp = pipeline.create(dai.node.XLinkOut)
+
+xoutGrp.setStreamName("xout")
+
+# Set camera and name
+color.setCamera("color")
+
+sync.setSyncThreshold(timedelta(milliseconds=50))
+
+# Linking
+# ~ stereo.disparity.link(sync.inputs["disparity"])
+color.video.link(sync.inputs["video"])
+
+sync.out.link(xoutGrp.input)
+
 #Server Information:
-HOST = '127.0.0.1'  #Server IP (Use '127.0.0.1' for local testing)
+HOST = '192.168.0.185'  #Server IP (Use '127.0.0.1' for local testing)
 TCP_PORT = 12345  #Server Port
 
 
@@ -97,25 +123,43 @@ def handle_client(client_socket):
 
 #Function to transmit camera feed from the Raspberry Pi to user interface:
 def handle_camera(client_socket):
-    #Initializing OpenCV video capture:
-    cameraIndex = 0 #Type of camera to use (i.e., "0" means laptop webcam)
-    cap = cv2.VideoCapture(0) #Turn on camera
+    # ~ #Initializing OpenCV video capture:
+    # ~ cameraIndex = 0 #Type of camera to use (i.e., "0" means laptop webcam)
+    # ~ cap = cv2.VideoCapture(0) #Turn on camera
 
-    #Video-frame Processing:
-    while True:
-        #Capture video frame-by-frame:
-        ret, frame = cap.read()
+    # ~ #Video-frame Processing:
+    # ~ while True:
+        # ~ #Capture video frame-by-frame:
+        # ~ ret, frame = cap.read()
         
-        #Serialize frame:
-        data = pickle.dumps(frame)
+        # ~ #Serialize frame:
+        # ~ data = pickle.dumps(frame)
         
-        #Getting the size of the data and sending it:
-        message_size = struct.pack("L", len(data))
-        client_socket.sendall(message_size + data)
+        # ~ #Getting the size of the data and sending it:
+        # ~ message_size = struct.pack("L", len(data))
+        # ~ client_socket.sendall(message_size + data)
         
-        # Break the loop if 'q' is pressed
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        # ~ # Break the loop if 'q' is pressed
+        # ~ if cv2.waitKey(1) & 0xFF == ord('q'):
+            # ~ break
+    
+    #new Test
+    with dai.Device(pipeline) as device:
+        queue = device.getOutputQueue("xout", 10, False)
+        while True:
+            msgGrp = queue.get()
+            for name, msg in msgGrp:
+                # ~ print(type(msg))
+                frame = msg.getCvFrame()
+                data = pickle.dumps(frame)
+                
+                #Getting the size of the data and sending it:
+                message_size = struct.pack("L", len(data))
+                client_socket.sendall(message_size + data)
+
+                cv2.imshow(name, frame)
+            if cv2.waitKey(1) == ord("q"):
+                break
 
 #Function to start the server:
 def start_server():
