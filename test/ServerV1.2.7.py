@@ -152,12 +152,16 @@ def handle_camera(client_socket):
                 # ~ print(type(msg))
                 frame = msg.getCvFrame()
                 
-                #Serialize frame:
-                data = pickle.dumps(frame)
-        
-                #Getting the size of the data and sending it:
-                message_size = struct.pack("L", len(data))
-                client_socket.sendall(message_size + data)
+                # Convert frame to bytes
+                _, img_encoded = cv2.imencode('.jpg', frame)
+                frame_bytes = img_encoded.tobytes()
+
+                # Send the frame size first
+                frame_size = len(frame_bytes)
+                client_socket.sendall(frame_size.to_bytes(4, byteorder='big'))
+
+                # Send the frame to the client
+                client_socket.sendall(frame_bytes)
 
                 #Displaying the server camera-feed:
                 cv2.imshow(name, frame)
