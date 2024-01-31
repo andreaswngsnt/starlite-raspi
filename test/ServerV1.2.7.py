@@ -143,7 +143,7 @@ def handle_camera(client_socket):
         # ~ if cv2.waitKey(1) & 0xFF == ord('q'):
             # ~ break
     
-    #new Test
+    #Depth-Camera Test:
     with dai.Device(pipeline) as device:
         queue = device.getOutputQueue("xout", 10, False)
         while True:
