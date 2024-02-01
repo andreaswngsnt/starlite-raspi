@@ -16,14 +16,14 @@ import keyboard
 import cv2
 import pickle
 import struct
-import depthai as dai
+#import depthai as dai
 import numpy as np
 from datetime import timedelta
 
 ################################################################################
 #Source Code:
 
-#Camera setup:
+'''#Camera setup:
 pipeline = dai.Pipeline()
 
 # Set color pipeline
@@ -44,11 +44,12 @@ sync.setSyncThreshold(timedelta(milliseconds=50))
 # ~ stereo.disparity.link(sync.inputs["disparity"])
 color.video.link(sync.inputs["video"])
 
-sync.out.link(xoutGrp.input)
+sync.out.link(xoutGrp.input)'''
 
 #Server Information:
-HOST = '192.168.0.185'  #Server IP (Use '127.0.0.1' for local testing)
+HOST = '127.0.0.1'  #Server IP (Use '127.0.0.1' for local testing)
 TCP_PORT = 12345  #Server Port
+UDP_PORT = 12346
 
 
 #Manual Control Program (Start):
@@ -123,27 +124,28 @@ def handle_client(client_socket):
 
 #Function to transmit camera feed from the Raspberry Pi to user interface:
 def handle_camera(client_socket):
-    # ~ #Initializing OpenCV video capture:
-    # ~ cameraIndex = 0 #Type of camera to use (i.e., "0" means laptop webcam)
-    # ~ cap = cv2.VideoCapture(0) #Turn on camera
+    #Initializing OpenCV video capture:
+    cameraIndex = 0 #Type of camera to use (i.e., "0" means laptop webcam)
+    cap = cv2.VideoCapture(cameraIndex) #Turn on camera
 
-    # ~ #Video-frame Processing:
-    # ~ while True:
-        # ~ #Capture video frame-by-frame:
-        # ~ ret, frame = cap.read()
-        
-        # ~ #Serialize frame:
-        # ~ data = pickle.dumps(frame)
-        
-        # ~ #Getting the size of the data and sending it:
-        # ~ message_size = struct.pack("L", len(data))
-        # ~ client_socket.sendall(message_size + data)
-        
-        # ~ # Break the loop if 'q' is pressed
-        # ~ if cv2.waitKey(1) & 0xFF == ord('q'):
-            # ~ break
+    while True:
+        ret, frame = cap.read()
+        # Convert frame to bytes
+        _, img_encoded = cv2.imencode('.jpg', frame)
+        frame_bytes = img_encoded.tobytes()
+
+        # Send the frame size first
+        frame_size = len(frame_bytes)
+        client_socket.sendall(frame_size.to_bytes(4, byteorder='big'))
+
+        # Send the frame to the client
+        client_socket.sendall(frame_bytes)
     
-    #Depth-Camera Test:
+        # Break the loop if 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    
+    '''#new Test
     with dai.Device(pipeline) as device:
         queue = device.getOutputQueue("xout", 10, False)
         while True:
@@ -151,7 +153,6 @@ def handle_camera(client_socket):
             for name, msg in msgGrp:
                 # ~ print(type(msg))
                 frame = msg.getCvFrame()
-                
                 # Convert frame to bytes
                 _, img_encoded = cv2.imencode('.jpg', frame)
                 frame_bytes = img_encoded.tobytes()
@@ -163,17 +164,19 @@ def handle_camera(client_socket):
                 # Send the frame to the client
                 client_socket.sendall(frame_bytes)
 
-                #Displaying the server camera-feed:
-                cv2.imshow(name, frame)
+                #cv2.imshow(name, frame)
                 
             if cv2.waitKey(1) == ord("q"):
-                break
+                break'''
 
 #Function to start the server:
 def start_server():
     #Initializing the server socket (TCP):
     server_socket_TCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket_TCP.bind((HOST, TCP_PORT))
+
+    #server_socket_UDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #server_socket_UDP.bind((HOST, UDP_PORT))
 
     #Listening for connection requests (maximum number of simultaneous connections = 5):
     server_socket_TCP.listen(5)
