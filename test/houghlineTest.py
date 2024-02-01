@@ -62,9 +62,9 @@ with dai.Device(pipeline) as device:
             
             # mask
             mask = np.zeros(frame.shape, dtype=np.uint8)
-            roi_corners = np.array([[(0,height), (width/2,height/2), (width,height)]], dtype=np.int32)#Three co ordinates of the triangle
+            roi_corners = np.array([[(0-160,height), (width/2,height/2-100), (width+160,height)]], dtype=np.int32)#Three co ordinates of the triangle
             white = (255, 255, 255)
-            cv2.fillPoly(mask, roi_corners)
+            cv2.fillPoly(mask, roi_corners, white)
 
             # apply the mask
             masked_frame = cv2.bitwise_and(frame, mask)
@@ -82,8 +82,8 @@ with dai.Device(pipeline) as device:
             # Convert image to grayscale
             gray = cv2.cvtColor(masked_frame, cv2.COLOR_RGB2GRAY)
             # Define our parameters for Canny
-            low_threshold = 50
-            high_threshold = 150    # originally 100
+            low_threshold = 45 # 50
+            high_threshold = 153   # originally 100
             edges = cv2.Canny(gray, low_threshold, high_threshold)
              
             # The below for loop runs till r and theta values
