@@ -20,6 +20,9 @@ import depthai as dai
 import numpy as np
 from datetime import timedelta
 
+#5. Control System
+from control_system import ControlSystem
+
 ################################################################################
 #Source Code:
 
@@ -55,8 +58,10 @@ UDP_PORT = 12346
 #Manual Control Program (Start):
 
 #Motor Setup:
-motorL = Motor(forward = 27, backward = 17)
-motorR = Motor(forward = 23, backward = 24)
+'''motorL = Motor(forward = 27, backward = 17)
+motorR = Motor(forward = 23, backward = 24)'''
+
+control_system = ControlSystem(False)
 
 #Function to receive manual control inputs:
 def handle_client(client_socket):
@@ -74,17 +79,23 @@ def handle_client(client_socket):
             
             #Move forward
             if data == 'w':
-                motorL.forward()
-                motorR.forward()
+                #motorL.forward()
+                #motorR.forward()
+
+                control_system.move_forward()
+                
                 print("Forward")
     
             #Move backward
             elif data == 's':
-                motorL.backward()
-                motorR.backward()
+                #motorL.backward()
+                #motorR.backward()
+
+                control_system.move_backward()
+                
                 print("Backward")
     
-            #Rotate left
+            '''#Rotate left
             elif data == 'q':
                 motorL.backward(1)
                 motorR.forward(1)
@@ -94,24 +105,33 @@ def handle_client(client_socket):
             elif data == 'e':
                 motorL.forward(1)
                 motorR.backward(1)
-                print("Rotate right")
+                print("Rotate right")'''
     
             #Move while steering left
             elif data == 'a':
-                motorL.forward(0.5)
-                motorR.forward(1)
+                #motorL.forward(0.5)
+                #motorR.forward(1)
+            
+                control_system.rotate_left()
+            
                 print("Left")
     
             #Move while steering right
             elif data == 'd':
-                motorL.forward(1)
-                motorR.forward(0.5)
+                #motorL.forward(1)
+                #motorR.forward(0.5)
+
+                control_system.rotate_right()
+            
                 print("Right")
     
             #Brake
             elif data == ' ':
-                motorL.stop()
-                motorR.stop()
+                #motorL.stop()
+                #motorR.stop()
+
+                control_system.stop()
+            
                 print("Stop")
             
             #Manual Control Program (End)
