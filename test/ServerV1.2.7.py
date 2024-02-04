@@ -95,18 +95,6 @@ def handle_client(client_socket):
                 
                 print("Backward")
     
-            '''#Rotate left
-            elif data == 'q':
-                motorL.backward(1)
-                motorR.forward(1)
-                print("Rotate left")
-    
-            #Rotate right
-            elif data == 'e':
-                motorL.forward(1)
-                motorR.backward(1)
-                print("Rotate right")'''
-    
             #Move while steering left
             elif data == 'a':
                 #motorL.forward(0.5)
