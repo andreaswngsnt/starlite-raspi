@@ -16,7 +16,7 @@ import keyboard
 import cv2
 import pickle
 import struct
-#import depthai as dai
+import depthai as dai
 import numpy as np
 from datetime import timedelta
 
