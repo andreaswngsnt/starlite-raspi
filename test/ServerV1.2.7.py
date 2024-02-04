@@ -8,7 +8,7 @@ import socket
 import threading
 
 #3. Manual Control:
-#from gpiozero import Motor
+from gpiozero import Motor
 from time import sleep
 import keyboard
 
@@ -55,8 +55,8 @@ UDP_PORT = 12346
 #Manual Control Program (Start):
 
 #Motor Setup:
-#motorL = Motor(forward = 27, backward = 17)
-#motorR = Motor(forward = 23, backward = 24)
+motorL = Motor(forward = 27, backward = 17)
+motorR = Motor(forward = 23, backward = 24)
 
 #Function to receive manual control inputs:
 def handle_client(client_socket):
@@ -74,44 +74,44 @@ def handle_client(client_socket):
             
             #Move forward
             if data == 'w':
-                #motorL.forward()
-                #motorR.forward()
+                motorL.forward()
+                motorR.forward()
                 print("Forward")
     
             #Move backward
             elif data == 's':
-                #motorL.backward()
-                #motorR.backward()
+                motorL.backward()
+                motorR.backward()
                 print("Backward")
     
             #Rotate left
             elif data == 'q':
-                #motorL.backward(1)
-                #motorR.forward(1)
+                motorL.backward(1)
+                motorR.forward(1)
                 print("Rotate left")
     
             #Rotate right
             elif data == 'e':
-                #motorL.forward(1)
-                #motorR.backward(1)
+                motorL.forward(1)
+                motorR.backward(1)
                 print("Rotate right")
     
             #Move while steering left
             elif data == 'a':
-                #motorL.forward(0.5)
-                #motorR.forward(1)
+                motorL.forward(0.5)
+                motorR.forward(1)
                 print("Left")
     
             #Move while steering right
             elif data == 'd':
-                #motorL.forward(1)
-                #motorR.forward(0.5)
+                motorL.forward(1)
+                motorR.forward(0.5)
                 print("Right")
     
             #Brake
             elif data == ' ':
-                #motorL.stop()
-                #motorR.stop()
+                motorL.stop()
+                motorR.stop()
                 print("Stop")
             
             #Manual Control Program (End)
