@@ -12,8 +12,8 @@ pipeline = dai.Pipeline()
 # Define the Hough transform parameters
 rho = 1
 theta = np.pi/180
-threshold = 60
-min_line_length = 50
+threshold = 160 # 60
+min_line_length = 60 # 50
 max_line_gap = 5
 
 # Set color pipeline
@@ -86,7 +86,7 @@ with dai.Device(pipeline) as device:
             
             # mask
             mask = np.zeros(edgeRgbFrame.shape, dtype=np.uint8)
-            roi_corners = np.array([[(0-160,height), (width/2,height/2-100), (width+160,height)]], dtype=np.int32) # Three coordinates of the triangle
+            roi_corners = np.array([[(0-1600,height), (width/2,height/2-100), (width+1600,height)]], dtype=np.int32) # Three coordinates of the triangle
             white = (255, 255, 255)
             cv2.fillPoly(mask, roi_corners, white)
 
@@ -96,8 +96,8 @@ with dai.Device(pipeline) as device:
             ########################################################################
             # hough line filter
             # Define our parameters for Canny
-            low_threshold = 100 # 50
-            high_threshold = 200   # originally 100
+            low_threshold = 175 # 50
+            high_threshold = 225   # originally 100
             edges = cv2.Canny(masked_frame, low_threshold, high_threshold)
              
             # The below for loop runs till r and theta values
@@ -110,14 +110,45 @@ with dai.Device(pipeline) as device:
             # ~ print(type(lines))
             # check if lines is empty
             lines_check = np.any(lines)
+            
+            # for calculating the slope in general
+            slope1 = 0
+            slopeC = 0  # all lines combined
+            count = 0
+            
             # Iterate over the output "lines" and draw lines on the image copy
             if lines_check:
-                for line in lines:
-                    for x1,y1,x2,y2 in line:
+                for i in range(lines.shape[0]):
+                    for x1,y1,x2,y2 in lines[i]:
+                        if abs(x1-x2) <= 10:
+                            np.delete(lines,i)
+                            break
+                        if abs(y2-y1) <= 10:
+                            np.delete(lines,i)
+                            break
+                        slope1 = (y1-y2)/(x1-x2)
+                        slopeC += slope1
+                        count += 1
                         cv2.line(frame,(x1,y1),(x2,y2),(255,0,0),5)
                         cv2.line(masked_frame,(x1,y1),(x2,y2),(255,0,0),5)
+            if count != 0:
+                slopeC = slopeC / count
+                # end point of the line calculated
+                liney = height/2
+                linex = liney / slopeC + width/2
+                
+                if slopeC > 1/36:
+                    cv2.line(frame,(int(width/2),int(height-1)),(int(linex),int(liney)),(0,0,255),5)
+                else:
+                    pass
+            else:
+                cv2.line(frame,(int(width/2),int(height-1)),(int(width/2),int(height/2)),(0,0,255),5)
             ########################################################################
             
+            cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(name, 800, 600)
+            cv2.namedWindow(name+"_masked", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(name+"_masked", 800, 600)
             cv2.imshow(name, frame)
             cv2.imshow(name+"_masked", masked_frame)
         if cv2.waitKey(1) == ord("q"):
