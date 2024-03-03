@@ -54,12 +54,6 @@ with dai.Device(pipeline) as device:
         # frame width and height
         width  = RGBframe.shape[1]
         height = RGBframe.shape[0]
-        # testing
-        # ~ print("---------")
-        # ~ print(width)
-        # ~ print(height)
-        # ~ print(RGBframe.shape)
-        # ~ print("---------")
         
         # Convert to grayscale here.
         grayFrame = cv2.cvtColor(RGBframe, cv2.COLOR_RGB2GRAY)
@@ -109,7 +103,6 @@ with dai.Device(pipeline) as device:
                     if math.fabs(slope) < 0.5:
                         continue
                     cv2.line(RGBframe,(x1,y1),(x2,y2),(0,0,255),5)
-                    # ~ cv2.line(roiFrame,(x1,y1),(x2,y2),(255,0,0),5)
                     if slope <= 0: # <-- If the slope is negative, left group.
                         left_line_x.extend([x1, x2])
                         left_line_y.extend([y1, y2])
@@ -160,14 +153,6 @@ with dai.Device(pipeline) as device:
             lane_x_end = int((left_x_end + right_x_end) / 2)
             lane_y_end = min_y
             
-            # testing
-            # ~ print("---------")
-            # ~ print(lane_x_start)
-            # ~ print(lane_y_start)
-            # ~ print(lane_x_end)
-            # ~ print(lane_y_end)
-            # ~ print("---------")
-            
             cv2.line(RGBframe,(lane_x_start,max_y),(lane_x_end,int(min_y)),(0,255,0),5)
             # calculate the angle
             radian = math.atan2((0 - (height-lane_y_end)), (lane_x_start - lane_x_end))
@@ -175,29 +160,8 @@ with dai.Device(pipeline) as device:
             if angle < 0:
                 angle = angle + 180
             angle = round(angle, 2)
-            # ~ theta = angle(lane_x_end,(height-lane_y_end),lane_x_start,0)
             # ~ print("---------")
             print(angle)
-            # ~ print("---------")
-            # ~ cv2.line(roiFrame,(lane_x_start,max_y),(lane_x_end,int(min_y)),(0,255,0),5)
-            
-        # ~ # calculate the angle
-        # ~ if directionExist:
-            # ~ # fixing the coordinate
-            # ~ n_x_start = lane_x_end # n stands for normalized
-            # ~ n_y_start = height - lane_y_end
-            # ~ n_x_end = lane_x_start
-            # ~ n_y_end = height - lane_y_start
-            
-            # ~ theta = angle(n_x_start,n_y_start,n_x_end,n_y_end)
-            
-            # ~ # testing
-            # ~ print("---------")
-            # ~ print(n_x_start)
-            # ~ print(n_y_start)
-            # ~ print(n_x_end)
-            # ~ print(n_y_end)
-            # ~ print(str(theta)+" degree")
             # ~ print("---------")
 
         # Get BGR frame from NV12 encoded video frame to show with opencv

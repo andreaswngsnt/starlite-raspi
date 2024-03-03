@@ -10,11 +10,11 @@ from PIL import Image
 pipeline = dai.Pipeline()
 
 # Define the Hough transform parameters
-rho = 1
+rho = 6
 theta = np.pi/180
 threshold = 160 # 60
-min_line_length = 60 # 50
-max_line_gap = 5
+min_line_length = 90 # 60
+max_line_gap = 3 # 5
 
 # Set color pipeline
 # Define sources and outputs
@@ -111,10 +111,15 @@ with dai.Device(pipeline) as device:
             # check if lines is empty
             lines_check = np.any(lines)
             
-            # for calculating the slope in general
-            slope1 = 0
-            slopeC = 0  # all lines combined
-            count = 0
+            # grouping information
+            x1left = 0
+            x1right = width
+            
+            # group left and right
+            left_line_x = []
+            left_line_y = []
+            right_line_x = []
+            right_line_y = []
             
             # Iterate over the output "lines" and draw lines on the image copy
             if lines_check:
@@ -126,23 +131,33 @@ with dai.Device(pipeline) as device:
                         if abs(y2-y1) <= 10:
                             np.delete(lines,i)
                             break
-                        slope1 = (y1-y2)/(x1-x2)
-                        slopeC += slope1
-                        count += 1
-                        cv2.line(frame,(x1,y1),(x2,y2),(255,0,0),5)
-                        cv2.line(masked_frame,(x1,y1),(x2,y2),(255,0,0),5)
-            if count != 0:
-                slopeC = slopeC / count
-                # end point of the line calculated
-                liney = height/2
-                linex = liney / slopeC + width/2
-                
-                if slopeC > 1/36:
-                    cv2.line(frame,(int(width/2),int(height-1)),(int(linex),int(liney)),(0,0,255),5)
-                else:
-                    pass
-            else:
-                cv2.line(frame,(int(width/2),int(height-1)),(int(width/2),int(height/2)),(0,0,255),5)
+                        slope = (y2-y1)/(x2-x1)
+                        # ~ print(x1)
+                        # ~ print(y1)
+                        # ~ print(x2)
+                        # ~ print(y2)
+                        # ~ print("-----------------")
+                        if slope <= 0: # <-- If the slope is negative, left group.
+                            if x1 >= x1left:
+                                x1left = x1
+                                y1left = y1
+                                x2left = x2
+                                y2left = y2
+                            else:
+                                continue
+                        else: # <-- Otherwise, right group.
+                            if x1 <= x1right:
+                                x1right = x1
+                                y1right = y1
+                                x2right = x2
+                                y2right = y2
+            
+                        
+            cv2.line(frame,(x1left,y1left),(x2left,y2left),(255,0,0),5)
+            cv2.line(frame,(x1right,y1right),(x2right,y2right),(255,0,0),5)
+            cv2.line(masked_frame,(x1left,y1left),(x2left,y2left),(255,0,0),5)
+            cv2.line(masked_frame,(x1right,y1right),(x2right,y2right),(255,0,0),5)
+            
             ########################################################################
             
             cv2.namedWindow(name, cv2.WINDOW_NORMAL)
