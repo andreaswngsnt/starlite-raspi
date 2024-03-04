@@ -1,4 +1,4 @@
-from lane_detector import LaneDetector
+from lane_detector_2 import LaneDetector
 
 lane_detector = LaneDetector()
 
