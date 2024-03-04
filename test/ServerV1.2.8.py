@@ -92,42 +92,33 @@ def handle_client(client_socket):
 
 
 # Data from the camera
-annotated_frame = None
 angle = None
 
 #Function to run the camera and take its annotated frame
-def handle_camera():
-    
+def handle_camera(server_socket_UDP):
     lane_detector = LaneDetector()
-    lane_detector.start(assign_camera_outputs)
+    lane_detector.start(camera_callback, server_socket_UDP)
 
-def assign_camera_outputs(output_frame, output_angle):
-    annotated_frame = output_frame
+def camera_callback(output_frame, output_angle, server_socket_UDP):
+    # Get calculated angle from the lane detector
     angle = output_angle
 
-#Function to transmit camera feed from the Raspberry Pi to user interface:
-def handle_send_UDP_frame(server_socket_UDP):
-    while True:
-        if annotated_frame is not None:
-            _, img_encoded = cv2.imencode('.jpg', annotated_frame)
-            frame_bytes = img_encoded.tobytes()
+    # Send the frame using UDP
+    _, img_encoded = cv2.imencode('.jpg', output_frame)
+    frame_bytes = img_encoded.tobytes()
 
-            # Send the frame size first
-            frame_size = len(frame_bytes)
-            #client_socket.sendall(frame_size.to_bytes(4, byteorder='big')) //TCP
+    # Send the frame size first
+    frame_size = len(frame_bytes)
+    #client_socket.sendall(frame_size.to_bytes(4, byteorder='big')) //TCP
 
-            server_socket_UDP.sendto(struct.pack("!I", len(frame_bytes)), (HOST, UDP_PORT))
+    server_socket_UDP.sendto(struct.pack("!I", len(frame_bytes)), (HOST, UDP_PORT))
 
-            # Send the frame to the client
-            #client_socket.sendall(frame_bytes) //TCP
+    # Send the frame to the client
+    #client_socket.sendall(frame_bytes) //TCP
 
-            server_socket_UDP.sendto(frame_bytes, (HOST, UDP_PORT))
-            
-            print(angle)
+    server_socket_UDP.sendto(frame_bytes, (HOST, UDP_PORT))
         
-        time.sleep(0.1)    
-        
-        
+# Function for autonomous navigation
 def handle_autonomous_navigation():
     while True:
         if autonomous_mode:
@@ -136,9 +127,10 @@ def handle_autonomous_navigation():
 
             if (control_system.throttle_L != 0 or control_system.throttle_R != 0) and angle is not None:
                 control_system.adjust_reference_yaw(angle - 90)
-                
-        control_system.stop()
-        time.sleep(0.25)
+        else:
+            control_system.stop()
+
+        time.sleep(0.1)
     
 
 #Function to start the server:
@@ -171,16 +163,12 @@ def start_server():
         client_thread.start()
 
         #Starting a new thread to run camera:
-        camera_thread = threading.Thread(target=handle_camera)
+        camera_thread = threading.Thread(target=handle_camera, args=(client_socket,))
         camera_thread.start()
         
         #Start a new thread for autonomous navigation:
         autonomous_thread = threading.Thread(target=handle_autonomous_navigation)
         autonomous_thread.start()
-        
-        #TODO:Starting a new thread to transmit camera feed:
-        send_UDP_frame_thread = threading.Thread(target=handle_send_UDP_frame, args=(client_socket,))
-        send_UDP_frame_thread.start()
 
 #Program Execution:
 if __name__ == "__main__":
