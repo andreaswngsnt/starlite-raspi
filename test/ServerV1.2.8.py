@@ -91,6 +91,7 @@ def handle_client(client_socket):
 
 # Data from the camera
 angle = None
+obstacle_detected = False
 
 #Function to run the camera and take its annotated frame
 def handle_camera(server_socket_UDP):
@@ -122,8 +123,8 @@ def camera_callback(output_frame, output_angle, server_socket_UDP):
 def handle_autonomous_navigation():
     # Run the code every 0.1 seconds
     while True:
-        # Run these if autonomous mode is detected
-        if autonomous_mode:
+        # Run these if autonomous mode is detected and if there's no obstacle detected
+        if autonomous_mode and obstacle_detected is False:
             # Start moving if the robot is not moving
             if control_system.throttle_L == 0 and control_system.throttle_R == 0:
                 control_system.move_forward()
@@ -141,7 +142,7 @@ def handle_autonomous_navigation():
                 else:
                     control_system.adjust_reference_yaw(input_steering_angle)
                 
-        # Stop the robot if autonomous mode is turned off
+        # Stop the robot if that's not the case
         else:
             control_system.stop()
 
