@@ -8,8 +8,6 @@ import socket
 import threading
 
 #3. Manual Control:
-#from control_system import ControlSystem
-#from gpiozero import Motor
 from time import sleep
 import keyboard
 
@@ -17,48 +15,30 @@ import keyboard
 import cv2
 import pickle
 import struct
-#import depthai as dai
 import numpy as np
-#from datetime import timedelta
+import time
+
+from lane_detector import LaneDetector
+
+#5. Control System
+from control_system import ControlSystem
 
 ################################################################################
 #Source Code:
 
-#Camera Setup:
-pipeline = dai.Pipeline()
-
-# Set color pipeline
-color = pipeline.create(dai.node.ColorCamera)
-sync = pipeline.create(dai.node.Sync)
-
-# Group Output
-xoutGrp = pipeline.create(dai.node.XLinkOut)
-
-xoutGrp.setStreamName("xout")
-
-# Set camera and name
-color.setCamera("color")
-
-sync.setSyncThreshold(timedelta(milliseconds=50))
-
-# Linking
-# ~ stereo.disparity.link(sync.inputs["disparity"])
-color.video.link(sync.inputs["video"])
-
-sync.out.link(xoutGrp.input)
-
 #Server Information:
-HOST = '127.0.0.1'  #Server IP (Use '127.0.0.1' for local testing and '192.168.0.185' to connect to robot)
+HOST = '192.168.0.185'  #Server IP (Use '127.0.0.1' for local testing)
 TCP_PORT = 12345  #Server Port
+UDP_PORT = 12346
 
+
+control_system = ControlSystem(False)
+autonomous_mode = False
 
 #Manual Control Program (Start):
 
 #Function to receive manual control inputs:
 def handle_client(client_socket):
-    #Control System Initialization:
-    #control_system = ControlSystem()
-    
     while True:
         try:
             #Receive data from the client
@@ -71,88 +51,102 @@ def handle_client(client_socket):
             
             #Motor Control Functionalities:
             
-            #Move forward:
+            #Move forward
             if data == 'w':
-                #control_system.move_forward()
+                autonomous_mode = False
+                control_system.move_forward()
                 print("Forward")
     
-            #Move backward:
+            #Move backward
             elif data == 's':
-                #control_system.move_backward()
+                autonomous_mode = False
+                control_system.move_backward()
                 print("Backward")
     
-            #Rotate left:
+            #Move while steering left
             elif data == 'a':
-                #control_system.rotate_left()
+                autonomous_mode = False
+                control_system.rotate_left()
                 print("Left")
     
-            #Rotate right:
+            #Move while steering right
             elif data == 'd':
-                #control_system.rotate_right()
+                autonomous_mode = False
+                control_system.rotate_right()
                 print("Right")
     
-            #Stop:
+            #Brake
             elif data == ' ':
-                #control_system.stop()
+                autonomous_mode = False
+                control_system.stop()
                 print("Stop")
             
             #Manual Control Program (End)
 
-        #If the connection is reset, close the connection:
         except ConnectionResetError:
+            autonomous_mode = False
             break
 
     #Closing the connection:
     client_socket.close()
 
+
+# Data from the camera
+annotated_frame = None
+angle = None
+
+#Function to run the camera and take its annotated frame
+def handle_camera():
+    
+    lane_detector = LaneDetector()
+    lane_detector.start(assign_camera_outputs)
+
+def assign_camera_outputs(output_frame, output_angle):
+    annotated_frame = output_frame
+    angle = output_angle
+
 #Function to transmit camera feed from the Raspberry Pi to user interface:
-def handle_camera(client_socket):
-    #Depth Camera Test:
-    with dai.Device(pipeline) as device:
-        queue = device.getOutputQueue("xout", 10, False)
-        while True:
-            msgGrp = queue.get()
-            for name, msg in msgGrp:
-                frame = msg.getCvFrame()
-                data = pickle.dumps(frame)
-                
-                #Getting the size of the data and sending it:
-                message_size = struct.pack("L", len(data))
-                client_socket.sendall(message_size + data)
+def handle_send_UDP_frame(server_socket_UDP):
+    while True:
+        if annotated_frame is not None:
+            _, img_encoded = cv2.imencode('.jpg', annotated_frame)
+            frame_bytes = img_encoded.tobytes()
 
-                #Display camera feed for debugging purposes:
-                cv2.imshow(name, frame)
+            # Send the frame size first
+            frame_size = len(frame_bytes)
+            #client_socket.sendall(frame_size.to_bytes(4, byteorder='big')) //TCP
 
-            #If "q" is pressed, quit sending camera feed:
-            if cv2.waitKey(1) == ord("q"):
-                break
+            server_socket_UDP.sendto(struct.pack("!I", len(frame_bytes)), (HOST, UDP_PORT))
 
-# Function to control motors based on lane position (autonomous navigation module):
-def control_motors(lane_position, frame_center):
-    threshold = 50  # Adjust as needed
-    if lane_position is not None:
-        if lane_position < frame_center - threshold:
-            #Turning left:
-            #control_system.rotate_left()
-            print("Turning left...")
-        elif lane_position > frame_center + threshold:
-            #Turning right:
-            #control_system.rotate_right()
-            print("Turning right...")
-        else:
-            #Moving forward:
-            #control_system.move_forward()
-            print("Moving foward...")
-    else:
-        #Stopping or implementing fallback behavior:
-        #control_system.stop()
-        print("Stopping...")
+            # Send the frame to the client
+            #client_socket.sendall(frame_bytes) //TCP
+
+            server_socket_UDP.sendto(frame_bytes, (HOST, UDP_PORT))
+            
+            print(angle)
         
+        time.sleep(0.1)    
+        
+        
+def handle_autonomous_navigation():
+    while True:
+        if autonomous_mode:
+            control_system.move_forward()
+            if angle is not None:
+                control_system.adjust_reference_yaw(angle - 90)
+                
+        control_system.stop()
+        time.sleep(0.25)
+    
+
 #Function to start the server:
 def start_server():
     #Initializing the server socket (TCP):
     server_socket_TCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket_TCP.bind((HOST, TCP_PORT))
+
+    server_socket_UDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_socket_UDP.bind((HOST, UDP_PORT))
 
     #Listening for connection requests (maximum number of simultaneous connections = 5):
     server_socket_TCP.listen(5)
@@ -174,13 +168,17 @@ def start_server():
         client_thread = threading.Thread(target=handle_client, args=(client_socket,))
         client_thread.start()
 
-        #Starting a new thread to transmit camera feed:
-        camera_thread = threading.Thread(target=handle_camera, args=(client_socket,))
+        #Starting a new thread to run camera:
+        camera_thread = threading.Thread(target=handle_camera)
         camera_thread.start()
-
-        #Starting a new thread to enable lane detection (autonomous navigation module):
-        lane_detection_thread = threading.Thread(target=control_motors, args=(lane_position, frame_center,))
-        lane_detection_thread.start()
+        
+        #Start a new thread for autonomous navigation:
+        autonomous_thread = threading.Thread(target=handle_autonomous_navigation)
+        autonomous_thread.start()
+        
+        #TODO:Starting a new thread to transmit camera feed:
+        send_UDP_frame_thread = threading.Thread(target=handle_send_UDP_frame, args=(client_socket,))
+        send_UDP_frame_thread.start()
 
 #Program Execution:
 if __name__ == "__main__":
