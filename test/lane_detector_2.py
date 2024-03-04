@@ -36,24 +36,21 @@ class LaneDetector:
         # Define sources and outputs
         self.camRgb = self.pipeline.create(dai.node.ColorCamera)
         self.camRgb.setCamera("color")
-        self.xoutVideo = self.pipeline.create(dai.node.XLinkOut)
-        
-        self.xoutVideo.setStreamName("video")
-
-        # Properties
         self.camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
         self.camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-
-        self.xoutVideo.input.setBlocking(False)
-        self.xoutVideo.input.setQueueSize(1)
-
+        
+        self.xoutGrp = self.pipeline.create(dai.node.XLinkOut)
+        self.xoutGrp.setStreamName("xout")
+        self.xoutGrp.input.setBlocking(False)
+        self.xoutGrp.input.setQueueSize(1)
+        
         # TODO: Sync depth & color inputs
         self.sync = self.pipeline.create(dai.node.Sync)
         self.sync.setSyncThreshold(timedelta(milliseconds=50))
         self.stereo.disparity.link(self.sync.inputs["disparity"])
         self.camRgb.video.link(self.sync.inputs["video"])
 
-        self.sync.out.link(self.xoutVideo.input)
+        self.sync.out.link(self.xoutGrp.input)
         self.disparityMultiplier = 255.0 / self.stereo.initialConfig.getMaxDisparity()
         
         # Outputs
@@ -69,7 +66,7 @@ class LaneDetector:
         
     def start(self, callback = None, *args):
         with dai.Device(self.pipeline) as device:
-            queue = device.getOutputQueue(name="video", maxSize=1, blocking=False)
+            queue = device.getOutputQueue(name="xout", maxSize=1, blocking=False)
 
             while True:
                 msgGrp = queue.get()
