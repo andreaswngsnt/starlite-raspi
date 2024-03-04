@@ -54,14 +54,16 @@ class LaneDetector:
         self.disparityMultiplier = 255.0 / self.stereo.initialConfig.getMaxDisparity()
         
         # Outputs
-        self.angle = None
         self.annotated_frame = None
-        
-    def get_angle(self):
-        return self.angle
+        self.angle = None
+        self.obstacle_detected = False
         
     def get_annotated_frame(self):
         return self.annotated_frame
+    def get_angle(self):
+        return self.angle
+    def get_obstacle_detected(self):
+        return self.obstacle_detected
         
         
     def start(self, callback = None, *args):
@@ -200,7 +202,7 @@ class LaneDetector:
 
                     # Callback function
                     if callback is not None:
-                        callback(self.annotated_frame, self.angle, *args)
+                        callback(self.annotated_frame, self.angle, self.obstacle_detected, *args)
 
                 if cv2.waitKey(1) == ord('q'):
                     break

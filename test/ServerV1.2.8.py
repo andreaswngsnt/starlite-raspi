@@ -99,10 +99,13 @@ def handle_camera(server_socket_UDP):
     lane_detector.start(camera_callback, server_socket_UDP)
 
 # Callback function, called at every frame outputted by the lane detector
-def camera_callback(output_frame, output_angle, server_socket_UDP):
-    # Get calculated angle from the lane detector
+def camera_callback(output_frame, output_angle, output_obstacle_detected, server_socket_UDP):
+    # Get calculated angle & output obstacle
     global angle
     angle = output_angle
+
+    global obstacle_detected
+    obstacle_detected = output_obstacle_detected
 
     # Send the frame using UDP
     _, img_encoded = cv2.imencode('.jpg', output_frame)
