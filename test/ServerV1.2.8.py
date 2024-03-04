@@ -131,8 +131,10 @@ def handle_send_UDP_frame(server_socket_UDP):
 def handle_autonomous_navigation():
     while True:
         if autonomous_mode:
-            control_system.move_forward()
-            if angle is not None:
+            if control_system.throttle_L == 0 and control_system.throttle_R == 0:
+                control_system.move_forward()
+
+            if (control_system.throttle_L != 0 or control_system.throttle_R != 0) and angle is not None:
                 control_system.adjust_reference_yaw(angle - 90)
                 
         control_system.stop()
