@@ -7,16 +7,12 @@ import socket
 #2. Simultaneous Processing:
 import threading
 
-#3. Manual Control:
+#3. Manual & Autonomous Control:
 from time import sleep
-import keyboard
 
 #4. Camera Feed:
 import cv2
-import pickle
 import struct
-import numpy as np
-import time
 
 from lane_detector import LaneDetector
 
@@ -39,6 +35,8 @@ autonomous_mode = False
 
 #Function to receive manual control inputs:
 def handle_client(client_socket):
+    global autonomous_mode
+    
     while True:
         try:
             #Receive data from the client
@@ -99,8 +97,10 @@ def handle_camera(server_socket_UDP):
     lane_detector = LaneDetector()
     lane_detector.start(camera_callback, server_socket_UDP)
 
+# Callback function, called at every frame outputted by the lane detector
 def camera_callback(output_frame, output_angle, server_socket_UDP):
     # Get calculated angle from the lane detector
+    global angle
     angle = output_angle
 
     # Send the frame using UDP
@@ -130,7 +130,7 @@ def handle_autonomous_navigation():
         else:
             control_system.stop()
 
-        time.sleep(0.1)
+        sleep(0.1)
     
 
 #Function to start the server:

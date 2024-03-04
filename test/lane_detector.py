@@ -48,7 +48,7 @@ class LaneDetector:
         return self.annotated_frame
         
         
-    def start(self, callback = None, socket = None):
+    def start(self, callback = None, *args):
         with dai.Device(self.pipeline) as device:
             video = device.getOutputQueue(name="video", maxSize=1, blocking=False)
 
@@ -184,7 +184,7 @@ class LaneDetector:
 
                 # Callback function
                 if callback is not None:
-                    callback(socket, self.annotated_frame, self.angle)
+                    callback(self.annotated_frame, self.angle, *args)
 
                 if cv2.waitKey(1) == ord('q'):
                     break
