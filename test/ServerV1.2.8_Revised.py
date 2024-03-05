@@ -84,14 +84,14 @@ def handle_client(client_socket):
             #Autonomous Control (Start):
             elif data == 'f':
                 autonomous_mode = True
-                print("Autonomous control activated.")
+                print("Autonomous mode activated.")
 
             #Autonomous Control Program (End)
 
             #Control Toggle:
             elif data == 'g':
                 autonomous_mode = False
-                print("Manual control activated.")
+                print("Autonomous mode deactivated.")
             
             #Control Program (End)
 
