@@ -52,6 +52,7 @@ class LaneDetector:
 
         self.sync.out.link(self.xoutGrp.input)
         self.disparityMultiplier = 255.0 / self.stereo.initialConfig.getMaxDisparity()
+        print("Max Disparity: " + str(self.stereo.initialConfig.getMaxDisparity()))
         
         # Outputs
         self.annotated_frame = None
@@ -195,6 +196,14 @@ class LaneDetector:
 
                     # TODO: Depth test
                     if name == "disparity":
+                        # frame width and height
+                        width  = frame.shape[1]
+                        height = frame.shape[0]
+
+                        # ROI is 100 x 100 pixel, get maximum disparity within the ROI
+                        roi = frame[(height - 50):(height + 50), (width - 50):(width + 50)]
+                        print(roi.max())
+
                         frame = (frame * self.disparityMultiplier).astype(np.uint8)
                         frame = cv2.applyColorMap(frame, cv2.COLORMAP_JET)
 
