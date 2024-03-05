@@ -50,31 +50,31 @@ def handle_client(client_socket):
             #Motor Control Functionalities:
             
             #Move forward
-            if data == 'w':
+            if (data == 'w') & (autonomous_mode == False):
                 autonomous_mode = False
                 control_system.move_forward()
                 print("Forward")
     
             #Move backward
-            elif data == 's':
+            elif (data == 's') & (autonomous_mode == False):
                 autonomous_mode = False
                 control_system.move_backward()
                 print("Backward")
     
             #Move while steering left
-            elif data == 'a':
+            elif (data == 'a') & (autonomous_mode == False):
                 autonomous_mode = False
                 control_system.rotate_left()
                 print("Left")
     
             #Move while steering right
-            elif data == 'd':
+            elif (data == 'd') & (autonomous_mode == False):
                 autonomous_mode = False
                 control_system.rotate_right()
                 print("Right")
     
             #Brake
-            elif data == ' ':
+            elif (data == ' ') & (autonomous_mode == False):
                 autonomous_mode = False
                 control_system.stop()
                 print("Stop")
