@@ -79,11 +79,21 @@ def handle_client(client_socket):
                 control_system.stop()
                 print("Stop")
 
+            #Manual Control Program (End)
+
+            #Autonomous Control (Start):
             elif data == 'f':
                 autonomous_mode = True
                 print("Autonomous mode activated.")
+
+            #Autonomous Control Program (End)
+
+            #Control Toggle:
+            elif data == 'g':
+                autonomous_mode = False
+                print("Autonomous mode deactivated.")
             
-            #Manual Control Program (End)
+            #Control Program (End)
 
         except ConnectionResetError:
             autonomous_mode = False
