@@ -82,7 +82,7 @@ def handle_client(client_socket):
             #Manual Control Program (End)
 
             #Autonomous Control (Start):
-            elif data == 'f':
+            elif data == 'on':
                 autonomous_mode = True
                 print("Autonomous mode activated.")
 
