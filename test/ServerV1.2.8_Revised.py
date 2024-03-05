@@ -48,6 +48,8 @@ def handle_client(client_socket):
                 break  #If no data is received, close the connection.
             
             #Motor Control Functionalities:
+
+            #Manual Control Program (Start):
             
             #Move forward
             if (data == 'w') & (autonomous_mode == False):
