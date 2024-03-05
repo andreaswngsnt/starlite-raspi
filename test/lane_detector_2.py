@@ -27,10 +27,10 @@ class LaneDetector:
 
         # Define the Hough transform parameters
         self.rho = 6
-        self.theta = np.pi/60
+        self.theta = np.pi/180 #60
         self.threshold = 160 # 60
         self.min_line_length = 60 # 60
-        self.max_line_gap = 5 # 5
+        self.max_line_gap = 20 # 5
         
         # Set color pipeline
         # Define sources and outputs
@@ -88,8 +88,8 @@ class LaneDetector:
                         ########################################################################
                         # hough line filter
                         # Define our parameters for Canny
-                        low_threshold = 50 # 175
-                        high_threshold = 200   # originally 225
+                        low_threshold = 40 # 175
+                        high_threshold = 120   # originally 225
                         cannyFrame = cv2.Canny(grayFrame, low_threshold, high_threshold)
                         
                         # ROI
