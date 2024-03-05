@@ -189,6 +189,10 @@ class LaneDetector:
                                 angle = angle + 180
                             self.angle = round(angle, 2)
 
+                        # Callback function
+                        if callback is not None:
+                            callback(self.annotated_frame, self.angle, self.obstacle_detected, *args)
+
                     # TODO: Depth test
                     if name == "disparity":
                         frame = (frame * self.disparityMultiplier).astype(np.uint8)
@@ -199,10 +203,6 @@ class LaneDetector:
                     cv2.namedWindow(name, cv2.WINDOW_NORMAL)
                     cv2.resizeWindow(name, 800, 600)
                     cv2.imshow(name, frame)
-
-                    # Callback function
-                    if callback is not None:
-                        callback(self.annotated_frame, self.angle, self.obstacle_detected, *args)
 
                 if cv2.waitKey(1) == ord('q'):
                     break
