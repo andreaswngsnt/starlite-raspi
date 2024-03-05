@@ -44,7 +44,8 @@ def handle_autonomous_navigation():
         else:
             control_system.stop()
 
-        print(angle - 90)
+        if angle is not None:
+            print(angle - 90)
 
         sleep(0.1)
     control_system.stop()
