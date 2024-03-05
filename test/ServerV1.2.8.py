@@ -14,7 +14,7 @@ from time import sleep
 import cv2
 import struct
 
-from lane_detector import LaneDetector
+from lane_detector_2 import LaneDetector
 
 #5. Control System
 from control_system import ControlSystem
@@ -103,7 +103,6 @@ def camera_callback(output_frame, output_angle, output_obstacle_detected, server
     # Get calculated angle & output obstacle
     global angle
     angle = output_angle
-
     global obstacle_detected
     obstacle_detected = output_obstacle_detected
 
