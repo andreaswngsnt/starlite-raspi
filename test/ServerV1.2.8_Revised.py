@@ -89,7 +89,7 @@ def handle_client(client_socket):
             #Autonomous Control Program (End)
 
             #Control Toggle:
-            elif data == 'g':
+            elif data == 'off':
                 autonomous_mode = False
                 print("Autonomous mode deactivated.")
             
