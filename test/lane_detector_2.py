@@ -202,7 +202,9 @@ class LaneDetector:
 
                         # ROI is 100 x 100 pixel, get maximum disparity within the ROI
                         roi = frame[(height - 50):(height + 50), (width - 50):(width + 50)]
-                        print(roi.max())
+                        print("Max disparity within ROI: " + str(roi.max()))
+
+                        frame[(height - 50):(height + 50), (width - 50):(width + 50)] = np.ones((100, 100), dtype=np.uint8)
 
                         frame = (frame * self.disparityMultiplier).astype(np.uint8)
                         frame = cv2.applyColorMap(frame, cv2.COLORMAP_JET)
