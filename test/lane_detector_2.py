@@ -202,13 +202,13 @@ class LaneDetector:
                         # Normalize frame
                         frame = (frame * self.disparityMultiplier).astype(np.uint8)
                         
-                        # ROI is 200 x 200 pixel, get maximum disparity within the ROI
-                        roi = frame[int(height / 2 - 100):int(height / 2 + 100), int(width / 2 - 100):int(width / 2 + 100)]
+                        # ROI is 200 x 100 pixel, get maximum disparity within the ROI
+                        roi = frame[int(height / 2 - 50):int(height / 2 + 50), int(width / 2 - 100):int(width / 2 + 100)]
                         detected_normalized_disparity = roi.max()
                         
                         # Draw the ROI
-                        start_point = (int(width / 2 - 100), int(height / 2 - 100))
-                        end_point = (int(width / 2 + 100), int(height / 2 + 100))
+                        start_point = (int(width / 2 - 100), int(height / 2 - 50))
+                        end_point = (int(width / 2 + 100), int(height / 2 + 50))
                         frame = cv2.rectangle(frame, start_point, end_point, int(roi.max()), -1)
                         
                         # Assume there is an object when the normalized disparity > 230
