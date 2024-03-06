@@ -1,3 +1,4 @@
+import threading
 from time import sleep
 from lane_detector_2 import LaneDetector
 from control_system import ControlSystem
@@ -21,6 +22,9 @@ autonomous_mode = False
 def handle_autonomous_navigation():
     # Run the code every 0.1 seconds
     while True:
+        if obstacle_detected:
+            print("Obstacle detected")
+        
         # Run these if autonomous mode is detected and if there's no obstacle detected
         if autonomous_mode and obstacle_detected is False:
             # Start moving if the robot is not moving
@@ -48,9 +52,7 @@ def handle_autonomous_navigation():
             print(angle - 90)
 
         sleep(0.1)
-    control_system.stop()
 
-lane_detector.start(camera_callback)
 
 camera_thread = threading.Thread(target=handle_camera)
 camera_thread.start()

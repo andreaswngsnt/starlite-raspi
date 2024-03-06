@@ -52,7 +52,6 @@ class LaneDetector:
 
         self.sync.out.link(self.xoutGrp.input)
         self.disparityMultiplier = 255.0 / self.stereo.initialConfig.getMaxDisparity()
-        print("Max Disparity: " + str(self.stereo.initialConfig.getMaxDisparity()))
         
         # Outputs
         self.annotated_frame = None
@@ -200,13 +199,23 @@ class LaneDetector:
                         width  = frame.shape[1]
                         height = frame.shape[0]
 
-                        # ROI is 100 x 100 pixel, get maximum disparity within the ROI
-                        roi = frame[(height - 50):(height + 50), (width - 50):(width + 50)]
-                        print("Max disparity within ROI: " + str(roi.max()))
-
-                        frame[(height - 50):(height + 50), (width - 50):(width + 50)] = np.ones((100, 100), dtype=np.uint8)
-
                         frame = (frame * self.disparityMultiplier).astype(np.uint8)
+                        
+                        # ROI is 200 x 200 pixel, get maximum disparity within the ROI
+                        roi = frame[int(height / 2 - 100):int(height / 2 + 100), int(width / 2 - 100):int(width / 2 + 100)]
+                        detected_normalized_disparity = roi.max()
+                        
+                        # Draw the ROI
+                        start_point = (int(width / 2 - 100), int(height / 2 - 100))
+                        end_point = (int(width / 2 + 100), int(height / 2 + 100))
+                        frame = cv2.rectangle(frame, start_point, end_point, int(roi.max()), -1)
+                        
+                        # Assume there is an object when the normalized disparity > 230
+                        if detected_normalized_disparity >  230:
+                                self.obstacle_detected = True
+                        else:
+                                self.obstacle_detected = False
+                        
                         frame = cv2.applyColorMap(frame, cv2.COLORMAP_JET)
 
                     # Get BGR frame from NV12 encoded video frame to show with opencv
