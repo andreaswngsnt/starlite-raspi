@@ -199,6 +199,7 @@ class LaneDetector:
                         width  = frame.shape[1]
                         height = frame.shape[0]
 
+                        # Normalize frame
                         frame = (frame * self.disparityMultiplier).astype(np.uint8)
                         
                         # ROI is 200 x 200 pixel, get maximum disparity within the ROI
@@ -212,9 +213,9 @@ class LaneDetector:
                         
                         # Assume there is an object when the normalized disparity > 230
                         if detected_normalized_disparity >  230:
-                                self.obstacle_detected = True
+                            self.obstacle_detected = True
                         else:
-                                self.obstacle_detected = False
+                            self.obstacle_detected = False
                         
                         frame = cv2.applyColorMap(frame, cv2.COLORMAP_JET)
 
