@@ -127,10 +127,16 @@ def camera_callback(output_frame, output_angle, output_obstacle_detected, server
 
     server_socket_UDP.sendto(struct.pack("!I", len(frame_bytes)), (HOST, UDP_PORT))
 
+    data,addr = server_socket_UDP.recvfrom(1)
+    print("Frame-size acknowledgement received.")
+
     # Send the frame to the client
     #client_socket.sendall(frame_bytes) //TCP
 
     server_socket_UDP.sendto(frame_bytes, (HOST, UDP_PORT))
+
+    data,addr = server_socket_UDP.recvfrom(1)
+    print("Acknowledgement received.")
         
 # Function for autonomous navigation
 def handle_autonomous_navigation():
