@@ -140,12 +140,15 @@ def camera_callback(output_frame, output_angle, output_obstacle_detected, server
         
 # Function for autonomous navigation
 def handle_autonomous_navigation():
+    global autonomous_mode
+
     # Run the code every 0.1 seconds
     while True:
         # Run these if autonomous mode
         if autonomous_mode:
             if obstacle_detected:
                 control_system.stop()
+                autonomous_mode = False
             else:
                 # Start moving if the robot is not moving
                 if control_system.throttle_L == 0 and control_system.throttle_R == 0:
