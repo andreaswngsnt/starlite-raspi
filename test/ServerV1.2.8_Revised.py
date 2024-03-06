@@ -25,7 +25,7 @@ from control_system import ControlSystem
 #Server Information:
 HOST = '192.168.0.185'  #Server IP (Use '127.0.0.1' for local testing)
 TCP_PORT = 12345  #Server Port
-UDP_PORT = 12346
+UDP_PORT = 12345
 
 
 control_system = ControlSystem(False)
@@ -168,7 +168,6 @@ def start_server():
     server_socket_TCP.bind((HOST, TCP_PORT))
 
     server_socket_UDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_socket_UDP.bind((HOST, UDP_PORT))
 
     #Listening for connection requests (maximum number of simultaneous connections = 5):
     server_socket_TCP.listen(5)
@@ -191,7 +190,7 @@ def start_server():
         client_thread.start()
 
         #Starting a new thread to run camera:
-        camera_thread = threading.Thread(target=handle_camera, args=(client_socket,))
+        camera_thread = threading.Thread(target=handle_camera, args=(server_socket_UDP,))
         camera_thread.start()
         
         #Start a new thread for autonomous navigation:
