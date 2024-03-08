@@ -131,7 +131,7 @@ def camera_callback(output_frame, output_angle, output_obstacle_detected, server
     obstacle_detected = output_obstacle_detected
 
     # Resizing frame:
-    frame75 = rescale_frame(frame, percent = 75)
+    frame75 = rescale_frame(output_frame, percent = 75)
 
     # Send the frame using UDP
     _, img_encoded = cv2.imencode('.jpg', frame75)
