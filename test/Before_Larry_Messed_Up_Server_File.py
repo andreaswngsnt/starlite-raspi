@@ -130,8 +130,11 @@ def camera_callback(output_frame, output_angle, output_obstacle_detected, server
     global obstacle_detected
     obstacle_detected = output_obstacle_detected
 
+    # Resizing frame:
+    frame75 = rescale_frame(frame, percent = 75)
+
     # Send the frame using UDP
-    _, img_encoded = cv2.imencode('.jpg', output_frame)
+    _, img_encoded = cv2.imencode('.jpg', frame75)
     frame_bytes = img_encoded.tobytes()
 
     # Send the frame size first
@@ -141,6 +144,12 @@ def camera_callback(output_frame, output_angle, output_obstacle_detected, server
 
     # Send the frame to the client
     server_socket_UDP.sendto(frame_bytes, (HOST, UDP_PORT))
+
+def rescale_frame(frame, percent=75):
+    width = int(frame.shape[1] * percent/ 100)
+    height = int(frame.shape[0] * percent/ 100)
+    dim = (width, height)
+    return cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
 
 ################################################################################
 #Autonomous Navigation (Start):
