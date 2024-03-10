@@ -189,24 +189,24 @@ class LaneDetector:
                             angle = radian * (180/math.pi)
                             if angle < 0:
                                 angle = angle + 180
-                            angle = round(angle, 2)
+                            angle = round(angle, 5)
                         else:
                             # default is going straight
                             angle = 90
                         
                         # calculate new average angle
-                        if abs(angle - self.avgAngle) < 10:
+                        if abs(angle - self.avgAngle) < 15:
                             self.angleList.pop(0)
                             self.angleList.append(angle)
                             total = 0
                             for element in self.angleList:
                                 total = total + element
                             self.avgAngle = total / 10
-                            self.angle = self.avgAngle
+                            self.angle = round(self.avgAngle,5)
                         else: # absolute value is greater than 10 degree
                             self.angleList.pop(0)
-                            self.angleList.append(self.avgAngle)
-                            self.angle = self.avgAngle
+                            self.angleList.append(round(self.avgAngle,5))
+                            self.angle = round(self.avgAngle,5)
                         
                         # testing angleList values:
                         print("---------")

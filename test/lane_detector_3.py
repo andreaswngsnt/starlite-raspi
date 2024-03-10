@@ -85,6 +85,8 @@ class LaneDetector:
                         width  = frame.shape[1]
                         height = frame.shape[0]
                         
+                        cv2.blur(frame, (50,50))
+                        
                         # Convert to grayscale here.
                         grayFrame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
                         
@@ -189,7 +191,7 @@ class LaneDetector:
                             angle = radian * (180/math.pi)
                             if angle < 0:
                                 angle = angle + 180
-                            angle = round(angle, 2)
+                            angle = round(angle, 5)
                         else:
                             # default is going straight
                             angle = 90
@@ -202,11 +204,11 @@ class LaneDetector:
                             for element in self.angleList:
                                 total = total + element
                             self.avgAngle = total / 10
-                            self.angle = round(self.avgAngle,2)
+                            self.angle = round(self.avgAngle,5)
                         else: # absolute value is greater than 10 degree
                             self.angleList.pop(0)
-                            self.angleList.append(self.avgAngle)
-                            self.angle = round(self.avgAngle,2)
+                            self.angleList.append(round(self.avgAngle,5))
+                            self.angle = round(self.avgAngle,5)
                         
 
                         # Callback function
@@ -232,7 +234,7 @@ class LaneDetector:
                         frame = cv2.rectangle(frame, start_point, end_point, int(roi.max()), -1)
                         
                         # Assume there is an object when the normalized disparity > 230
-                        if detected_normalized_disparity >  230:
+                        if detected_normalized_disparity >  200:
                             self.obstacle_detected = True
                         else:
                             self.obstacle_detected = False
@@ -241,9 +243,9 @@ class LaneDetector:
 
                     # Get BGR frame from NV12 encoded video frame to show with opencv
                     # Visualizing the frame on slower hosts might have overhead
-                    # ~ cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-                    # ~ cv2.resizeWindow(name, 800, 600)
-                    # ~ cv2.imshow(name, frame)
+                    cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+                    cv2.resizeWindow(name, 800, 600)
+                    cv2.imshow(name, frame)
 
                 if cv2.waitKey(1) == ord('q'):
                     break

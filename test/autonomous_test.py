@@ -1,6 +1,6 @@
 import threading
 from time import sleep
-from lane_detector_3 import LaneDetector
+from lane_detector_3test import LaneDetector
 from control_system import ControlSystem
 
 lane_detector = LaneDetector()
