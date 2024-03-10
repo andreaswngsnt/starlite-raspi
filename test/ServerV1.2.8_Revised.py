@@ -118,8 +118,8 @@ def camera_callback(output_frame, output_angle, output_obstacle_detected, server
     obstacle_detected = output_obstacle_detected
 
     # Send the frame using UDP
-    _, img_encoded = cv2.imencode('.jpg', output_frame)
-    frame_bytes = img_encoded.tobytes()
+    #_, img_encoded = cv2.imencode('.jpg', output_frame)
+    frame_bytes = output_frame.tobytes()
 
     # Send the frame size first
     frame_size = len(frame_bytes)
@@ -177,7 +177,7 @@ def start_server():
     server_socket_TCP.bind((HOST, TCP_PORT))
 
     server_socket_UDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_socket_UDP.bind((HOST, UDP_PORT))
+    #server_socket_UDP.bind((HOST, UDP_PORT))
 
     #Listening for connection requests (maximum number of simultaneous connections = 5):
     server_socket_TCP.listen(5)

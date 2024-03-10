@@ -1,6 +1,6 @@
 import threading
 from time import sleep
-from lane_detector_2 import LaneDetector
+from lane_detector_3 import LaneDetector
 from control_system import ControlSystem
 
 lane_detector = LaneDetector()
@@ -18,7 +18,7 @@ def camera_callback(output_frame, output_angle, output_obstacle_detected):
     global obstacle_detected
     obstacle_detected = output_obstacle_detected
 
-autonomous_mode = False
+autonomous_mode = True
 def handle_autonomous_navigation():
     global autonomous_mode
 
@@ -52,5 +52,6 @@ def handle_autonomous_navigation():
 
 camera_thread = threading.Thread(target=handle_camera)
 camera_thread.start()
+sleep(10)
 autonomous_thread = threading.Thread(target=handle_autonomous_navigation)
 autonomous_thread.start()

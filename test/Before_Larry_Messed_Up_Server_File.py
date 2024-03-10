@@ -9,7 +9,7 @@ import threading
 
 #3. Manual & Autonomous Control:
 from time import sleep
-from lane_detector_2 import LaneDetector
+from lane_detector_3 import LaneDetector
 
 #4. Camera Feed:
 import cv2
@@ -131,7 +131,7 @@ def camera_callback(output_frame, output_angle, output_obstacle_detected, server
     obstacle_detected = output_obstacle_detected
 
     # Resizing frame:
-    frame75 = rescale_frame(output_frame, percent = 75)
+    frame75 = rescale_frame(output_frame, percent = 10)
 
     # Send the frame using UDP
     _, img_encoded = cv2.imencode('.jpg', frame75)
@@ -224,6 +224,8 @@ def start_server():
         #Starting a new thread to run camera:
         camera_thread = threading.Thread(target=handle_camera, args=(client_socket,))
         camera_thread.start()
+        
+        sleep(10)
         
         #Start a new thread for autonomous navigation:
         autonomous_thread = threading.Thread(target=handle_autonomous_navigation)

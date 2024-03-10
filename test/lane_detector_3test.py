@@ -53,6 +53,10 @@ class LaneDetector:
         self.sync.out.link(self.xoutGrp.input)
         self.disparityMultiplier = 255.0 / self.stereo.initialConfig.getMaxDisparity()
         
+        # default direction
+        self.angleList = [90,90,90,90,90,90,90,90,90,90]
+        self.avgAngle = 90
+        
         # Outputs
         self.annotated_frame = None
         self.angle = None
@@ -171,10 +175,7 @@ class LaneDetector:
                             # ~ cv2.line(roiFrame,(right_x_start,max_y),(right_x_end,int(min_y)),(255,0,0),5)
                         
                         # get direction
-                        angleList = []
-                        directionExist = False
                         if checkLeft and checkRight:
-                            directionExist = True
                             lane_x_start = int((left_x_start + right_x_start) / 2)
                             lane_y_start = max_y
                             lane_x_end = int((left_x_end + right_x_end) / 2)
@@ -188,10 +189,32 @@ class LaneDetector:
                             angle = radian * (180/math.pi)
                             if angle < 0:
                                 angle = angle + 180
-                            self.angle = round(angle, 2)
+                            angle = round(angle, 2)
                         else:
                             # default is going straight
-                            self.angle = 90
+                            angle = 90
+                        
+                        # calculate new average angle
+                        if abs(angle - self.avgAngle) < 10:
+                            self.angleList.pop(0)
+                            self.angleList.append(angle)
+                            total = 0
+                            for element in self.angleList:
+                                total = total + element
+                            self.avgAngle = total / 10
+                            self.angle = self.avgAngle
+                        else: # absolute value is greater than 10 degree
+                            self.angleList.pop(0)
+                            self.angleList.append(self.avgAngle)
+                            self.angle = self.avgAngle
+                        
+                        # testing angleList values:
+                        print("---------")
+                        print(self.angle)
+                        print(len(self.angleList))
+                        for element in self.angleList:
+                            print(element)
+                        print("---------")
                         
 
                         # Callback function
