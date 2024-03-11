@@ -282,7 +282,7 @@ class ControlSystem:
 
     # Adjusts the yaw of the robot when the robot is in motion.
     def adjust_reference_yaw(self, adjustment):
-        if adjustment > 1:
+        if abs(adjustment) > 1:
             self.reference_yaw = self._compute_target_yaw(self.sensor.get_angles_degrees()[2], adjustment)
 
     def rotate_left(self):
